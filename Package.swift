@@ -4,21 +4,50 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-cose",
+    name: "SwiftCose",
+    platforms: [
+      .iOS(.v14),
+      .macOS(.v12),
+      .watchOS(.v7),
+      .tvOS(.v14),
+    ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "swift-cose",
-            targets: ["swift-cose"]),
+            name: "SwiftCose",
+            targets: ["SwiftCose"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/outfoxx/PotentCodables.git", .upToNextMajor(from: "3.5.0")),
+        .package(url: "https://github.com/leif-ibsen/Digest.git", from: "1.11.0"),
+        .package(url: "https://github.com/tesseract-one/UncommonCrypto.swift.git",
+                 .upToNextMinor(from: "0.2.1")),
+        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.6.1"),
+        // For `X448` support
+        .package(url: "https://github.com/krzyzanowskim/OpenSSL.git", .upToNextMinor(from: "1.1.180")),
+        // For `secp256k1` support
+        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMinor(from: "0.12.2")),
+        // For `AES_CBC_HMAC_SHA2`, `PBES2` and RSA DER encoding support
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.7.2")),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "swift-cose"),
+            name: "SwiftCose",
+            dependencies: [
+                "PotentCodables",
+                .product(name: "Digest", package: "digest"),
+                .product(name: "UncommonCrypto", package: "UncommonCrypto.swift"),
+                .product(name: "X509", package: "swift-certificates"),
+                "OpenSSL",
+                .product(name: "secp256k1", package: "secp256k1.swift"),
+                "CryptoSwift",
+            ]
+        ),
         .testTarget(
-            name: "swift-coseTests",
-            dependencies: ["swift-cose"]
+            name: "SwiftCoseTests",
+            dependencies: ["SwiftCose"]
         ),
     ]
 )
