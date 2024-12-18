@@ -1,4 +1,5 @@
 import Foundation
+import K1
 import CryptoKit
 
 public class EcdhHkdfAlgorithm: CoseAlgorithm {
@@ -16,11 +17,11 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
         super.init(identifier: identifier, fullname: fullname)
     }
 
-    private func ecdh(curve: CoseCurve, privateKey: EC2Key, publicKey: EC2Key) throws -> Data {
-        guard let dValue = privateKey.d else {
+    private func ecdh(curve: CoseCurve, privateKey: EC2Key?, publicKey: EC2Key?) throws -> Data {
+        guard let dValue = privateKey?.d else {
             throw CoseError.invalidKey("Missing private key component d")
         }
-        guard let xValue = publicKey.x, let yValue = publicKey.y else {
+        guard let xValue = publicKey?.x, let yValue = publicKey?.y else {
             throw CoseError.invalidKey("Missing public key components x or y")
         }
         
@@ -28,12 +29,48 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
         x963Representation.append(xValue)
         x963Representation.append(yValue)
         
-
-        let privateKeyData = try P256.KeyAgreement.PrivateKey(rawRepresentation: dValue)
-        let publicKeyData = try P256.KeyAgreement.PublicKey(x963Representation: x963Representation)
-
-        let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
-        return sharedSecret.withUnsafeBytes { Data($0) }
+        switch curve.curveType {
+            case .SECP256K1:
+                let privateKeyData = try K1.KeyAgreement.PrivateKey(
+                    rawRepresentation: dValue
+                )
+                let publicKeyData = try K1.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            case .SECP256R1:
+                let privateKeyData = try P256.KeyAgreement.PrivateKey(rawRepresentation: dValue)
+                let publicKeyData = try P256.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            case .SECP384R1:
+                let privateKeyData = try P384.KeyAgreement.PrivateKey(rawRepresentation: dValue)
+                let publicKeyData = try P384.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            case .SECP521R1:
+                let privateKeyData = try P521.KeyAgreement.PrivateKey(rawRepresentation: dValue)
+                let publicKeyData = try P521.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            case .X25519:
+                let privateKeyData = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: dValue)
+                let publicKeyData = try Curve25519.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            case .X448:
+                let privateKeyData = try Curve448.KeyAgreement.PrivateKey(rawRepresentation: dValue)
+                let publicKeyData = try Curve448.KeyAgreement.PublicKey(x963Representation: x963Representation)
+                
+                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
+                return sharedSecret.withUnsafeBytes { Data($0) }
+            default:
+                throw CoseError.invalidAlgorithm("Unsupported curve")
+        }
     }
 
     public func deriveKek(curve: CoseCurve, privateKey: EC2Key, publicKey: EC2Key, context: CoseKDFContext) throws -> Data {
@@ -58,6 +95,10 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
                 throw CoseError.invalidAlgorithm("Unsupported hash function")
         }
     }
+    
+//    public func keyLength() -> Int {
+//        return self.keyWrapFunction.keyLength()
+//    }
 }
 
 /// ECDH ES w/ Concat KDF and AES Key Wrap w/ 128-bit key

@@ -53,8 +53,8 @@ public class X5T: Equatable {
         guard let algId = item[0], let thumbprint = item[1] else {
             fatalError("Invalid CBOR item format")
         }
-        let alg = try HashAlgorithm.fromId(
-            alg: AlgorithmType(rawValue: algId.integerValue()!)!
+        let alg = try CoseAlgorithm.getInstance(
+            for: CoseAlgorithmIdentifier(rawValue: algId.integerValue()!)!
         )
         return X5T(
             alg: alg as! HashAlgorithm,

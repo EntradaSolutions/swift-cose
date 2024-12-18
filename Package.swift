@@ -7,7 +7,7 @@ let package = Package(
     name: "SwiftCose",
     platforms: [
       .iOS(.v14),
-      .macOS(.v12),
+      .macOS(.v13),
       .watchOS(.v7),
       .tvOS(.v14),
     ],
@@ -26,9 +26,10 @@ let package = Package(
         // For `X448` support
         .package(url: "https://github.com/krzyzanowskim/OpenSSL.git", .upToNextMinor(from: "1.1.180")),
         // For `secp256k1` support
-        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMinor(from: "0.12.2")),
+        .package(url: "https://github.com/Sajjon/K1.git", from: "0.3.9"),
+//        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMinor(from: "0.18.0")),
         // For `AES_CBC_HMAC_SHA2`, `PBES2` and RSA DER encoding support
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.7.2")),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.8.3"))
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -41,8 +42,9 @@ let package = Package(
                 .product(name: "UncommonCrypto", package: "UncommonCrypto.swift"),
                 .product(name: "X509", package: "swift-certificates"),
                 "OpenSSL",
-                .product(name: "secp256k1", package: "secp256k1.swift"),
-                "CryptoSwift",
+                .product(name: "K1", package: "k1"),
+//                .product(name: "secp256k1", package: "secp256k1.swift"),
+                "CryptoSwift"
             ]
         ),
         .testTarget(

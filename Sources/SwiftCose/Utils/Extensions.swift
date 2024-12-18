@@ -1,51 +1,41 @@
 import Foundation
+import CryptoKit
+import OrderedCollections
 import PotentCBOR
+import CryptoSwift
 
 
-/// Base class for COSE attributes
-public class CoseAttribute: Comparable {
-    public var identifier: Int
-    public var fullname: String
-    public var valueParser: ((Any) throws -> Any)? = nil
-    
-    /// Initialize a new COSE attribute
+// MARK: - Curve25519.KeyAgreement.PublicKey Extensions
+public extension Curve25519.KeyAgreement.PublicKey {
+    /// Creates a Curve25519 public key for key agreement from an ANSI x9.63
+    /// representation.
+    ///
     /// - Parameters:
-    ///   - identifier: The identifier of the attribute
-    ///   - fullname: The full name of the attribute
-    ///   - valueParser: The parser function to convert the attribute value
-    public init(
-        identifier: Int,
-        fullname: String,
-        valueParser: ((Any) throws -> Any)? = nil
-    ) {
-        self.identifier = identifier
-        self.fullname = fullname.uppercased()
-        self.valueParser = valueParser
+    ///   - x963Representation: An ANSI x9.63 representation of the key.
+    /// - Throws: An error if the x9.63 representation is invalid.
+    init(x963Representation: some ContiguousBytes) throws {
+        let representation = x963Representation.withUnsafeBytes { Data($0) }
+        
+        // Validate the length: Curve25519 public keys are 32 bytes
+        guard representation.count == 33, representation.first == 0x04 else {
+            throw CryptoKitError.incorrectParameterSize
+        }
+        
+        // Extract X coordinate from the representation
+        let xBytes = representation.dropFirst() // Skip the 0x04 prefix
+        
+        // Curve25519 only uses X coordinate (Edwards form Y coordinate is implied)
+        self = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: xBytes)
     }
+}
 
-    /// The description of the attribute
-    public var description: String {
-        return "<\(fullname): \(identifier)>"
-    }
-
-    public static func == (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier == rhs.identifier
-    }
-
-    public static func < (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier < rhs.identifier
-    }
-
-    public static func > (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier > rhs.identifier
-    }
-
-    public static func <= (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier <= rhs.identifier
-    }
-
-    public static func >= (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier >= rhs.identifier
+// MARK: - P256.Signing.PrivateKey Extensions
+public extension P256.Signing.PrivateKey {
+    func publicKeyCoordinates() -> (x: Data, y: Data) {
+        let x963 = self.publicKey.x963Representation
+        let x = x963.subdata(in: 1..<33)
+        let y = x963.subdata(in: 33..<65)
+        return (x, y)
     }
 }
 
@@ -122,7 +112,7 @@ extension String {
 
 // MARK: - Dictionary Extensions
 extension Dictionary where Key == String, Value == Any {
-    func mapKeysToCbor() -> OrderedDictionary<CBOR, CBOR> {
+    var mapKeysToCbor: OrderedDictionary<CBOR, CBOR> {
         return self.reduce(into: [:]) { result, element in
             result[CBOR(element.key)] = CBOR.fromAny(element.value)
         }
@@ -139,9 +129,48 @@ extension CBOR {
         } else if let dataValue = value as? Data {
             return .byteString(dataValue)
         } else if let dictValue = value as? [String: Any] {
-            return .map(dictValue.mapKeysToCbor())
+            return .map(dictValue.mapKeysToCbor)
         } else {
             return .null
         }
+    }
+}
+
+// MARK: - CS.BigUInt Extensions
+extension CS.BigUInt {
+    var toData: Data {
+        var data = Data()
+        var value = self
+        while value > 0 {
+            let byte = UInt8(value & 0xFF)
+            data.insert(byte, at: 0) // Insert at the beginning for big-endian representation
+            value >>= 8
+        }
+        return data
+    }
+}
+
+
+// MARK: - RSA Extensions
+extension RSA {
+    public struct PrivateKey {
+        let data: Data
+        public init (data: Data) throws {
+            self.data = data
+        }
+    }
+    public struct PublicKey {
+        let data: Data
+        public init (data: Data) throws {
+            self.data = data
+        }
+    }
+    
+    func privateKey() throws -> PrivateKey {
+        return try PrivateKey(data: self.externalRepresentation())
+    }
+    
+    func publicKey() throws -> PublicKey {
+        return try PublicKey(data: self.publicKeyExternalRepresentation())
     }
 }

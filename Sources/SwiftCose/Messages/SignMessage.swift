@@ -71,11 +71,11 @@ public class SignMessage: CoseMessage {
     }
     
     // MARK: - Description
-    public override var description: String {
-        let phdrDescription = phdr?.description ?? "nil"
-        let uhdrDescription = uhdr?.description ?? "nil"
-        let payloadDescription = payload?.base64EncodedString() ?? "nil"
-        let signersDescription = signers.map { $0.description }.joined(separator: ", ")
-        return "<COSE_Sign: [\(phdrDescription), \(uhdrDescription), \(payloadDescription), [\(signersDescription)]]>"
-    }
+//    public var description: String {
+//        let phdrDescription = phdr?.description ?? "nil"
+//        let uhdrDescription = uhdr?.description ?? "nil"
+//        let payloadDescription = payload?.base64EncodedString() ?? "nil"
+//        let signersDescription = signers.map { $0.description }.joined(separator: ", ")
+//        return "<COSE_Sign: [\(phdrDescription), \(uhdrDescription), \(payloadDescription), [\(signersDescription)]]>"
+//    }
 }

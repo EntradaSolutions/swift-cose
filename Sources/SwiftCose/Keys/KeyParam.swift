@@ -16,9 +16,14 @@ public enum KeyParamIdentifier: Int, Codable, Equatable {
 public class KeyParam: CoseAttribute {
     public init(
         identifier: KeyParamIdentifier,
-        fullname: String
+        fullname: String,
+        valueParser: ((Any) throws -> Any)? = nil
     ) {
-        super.init(identifier: identifier.rawValue, fullname: fullname)
+        super.init(
+            identifier: identifier.rawValue,
+            fullname: fullname,
+            valueParser: valueParser
+        )
     }
 }
 
@@ -27,7 +32,8 @@ public class KpKty: KeyParam {
     public init() {
         super.init(
             identifier: .kty,
-            fullname: "KTY"
+            fullname: "KTY",
+            valueParser: KTY.fromId
         )
     }
 }
@@ -45,7 +51,8 @@ public class KpAlg: KeyParam {
     public init() {
         super.init(
             identifier: .alg,
-            fullname: "ALG"
+            fullname: "ALG",
+            valueParser: CoseAlgorithm.fromId
         )
     }
 }
@@ -54,7 +61,8 @@ public class KpKeyOps: KeyParam {
     public init() {
         super.init(
             identifier: .keyOps,
-            fullname: "KEY_OPS"
+            fullname: "KEY_OPS",
+            valueParser: KeyOps.fromId
         )
     }
 }
@@ -68,6 +76,8 @@ public class KpBaseIV: KeyParam {
     }
 }
 
+public class CoseKeyParam: CoseAttribute {}
+
 // MARK: - EC2 Key Parameters
 
 /// Enumerates the EC2 key parameters
@@ -76,15 +86,82 @@ public enum EC2KeyParamIdentifier: Int, Codable, Equatable {
     case x = -2
     case y = -3
     case d = -4
+    
+    /// Returns the appropriate `EC2KeyParamIdentifier` for the given fullname.
+    /// - Parameter fullname: The string fullname of the EC2 key parameter.
+    /// - Returns: The corresponding `EC2KeyParamIdentifier` if found, otherwise nil.
+    public static func fromFullName(_ fullname: String) -> EC2KeyParamIdentifier? {
+        switch fullname.uppercased() {
+        case "CURVE":
+            return .curve
+        case "X":
+            return .x
+        case "Y":
+            return .y
+        case "D":
+            return .d
+        default:
+            return nil
+        }
+    }
 }
     
 // Base class for EC2 key parameters
-public class EC2KeyParam: CoseAttribute {
+public class EC2KeyParam: CoseKeyParam {
+
+    public typealias Bound = EC2KeyParam
+
     public init(
         identifier: EC2KeyParamIdentifier,
-        fullname: String
+        fullname: String,
+        valueParser: ((Any) throws -> Any)? = nil
     ) {
-        super.init(identifier: identifier.rawValue, fullname: fullname)
+        super.init(
+            identifier: identifier.rawValue,
+            fullname: fullname,
+            valueParser: valueParser
+        )
+    }
+    
+    /// Returns the specific EC2KeyParam subclass for a given identifier.
+    /// - Parameter identifier: The identifier (Int or EC2KeyParamIdentifier).
+    /// - Returns: An instance of the corresponding EC2KeyParam subclass.
+    public static func fromId(for identifier: Any) throws -> EC2KeyParam {
+        switch identifier {
+        case let id as Int:
+            guard let keyType = EC2KeyParamIdentifier(rawValue: id) else {
+                throw CoseError.invalidKeyType("Unknown EC2KeyParam identifier")
+            }
+            return getInstance(for: keyType)
+                
+        case let name as String:
+            // If the identifier is a String, attempt to match it to a EC2KeyParamIdentifier
+            guard let type = EC2KeyParamIdentifier.fromFullName(name) else {
+                throw CoseError.invalidKeyType("Unknown type fullname")
+            }
+            return getInstance(for: type)
+                
+        case let type as EC2KeyParamIdentifier:
+            return getInstance(for: type)
+        default:
+            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+        }
+    }
+    
+    /// Maps the `EC2KeyParamIdentifier` to its corresponding class type.
+    /// - Parameter identifier: The identifier to map.
+    /// - Returns: An instance of the corresponding subclass.
+    public static func getInstance(for identifier: EC2KeyParamIdentifier) -> EC2KeyParam {
+        switch identifier {
+        case .curve:
+            return EC2KpCurve()
+        case .x:
+            return EC2KpX()
+        case .y:
+            return EC2KpY()
+        case .d:
+            return EC2KpD()
+        }
     }
 }
 
@@ -92,7 +169,8 @@ public class EC2KpCurve: EC2KeyParam {
     public init() {
         super.init(
             identifier: .curve,
-            fullname: "CURVE"
+            fullname: "CURVE",
+            valueParser: CoseCurve.fromId
         )
     }
 }
@@ -131,15 +209,70 @@ public enum OKPKeyParamIdentifier: Int, Codable, Equatable {
     case curve = -1
     case x = -2
     case d = -4
+    
+    /// Returns the appropriate `OKPKeyParamIdentifier` for the given fullname.
+    /// - Parameter fullname: The string fullname of the OKP key parameter.
+    /// - Returns: The corresponding `OKPKeyParamIdentifier` if found, otherwise nil.
+    public static func fromFullName(_ fullname: String) -> OKPKeyParamIdentifier? {
+        switch fullname.uppercased() {
+            case "CURVE":
+                return .curve
+            case "X":
+                return .x
+            case "D":
+                return .d
+            default:
+                return nil
+        }
+    }
 }
 
 // Base class for OKP key parameters
-public class OKPKeyParam: CoseAttribute {
+public class OKPKeyParam: CoseKeyParam {
     public init(
         identifier: OKPKeyParamIdentifier,
-        fullname: String
+        fullname: String,
+        valueParser: ((Any) throws -> Any)? = nil
     ) {
-        super.init(identifier: identifier.rawValue, fullname: fullname)
+        super.init(
+            identifier: identifier.rawValue,
+            fullname: fullname,
+            valueParser: valueParser
+        )
+    }
+    
+    /// Returns the specific OKPKeyParam subclass for a given identifier.
+    public static func fromId(for identifier: Any) throws -> OKPKeyParam {
+        switch identifier {
+        case let id as Int:
+            guard let keyType = OKPKeyParamIdentifier(rawValue: id) else {
+                throw CoseError.invalidKeyType("Unknown OKPKeyParam identifier")
+            }
+            return getInstance(for: keyType)
+
+        case let name as String:
+            guard let type = OKPKeyParamIdentifier.fromFullName(name) else {
+                throw CoseError.invalidKeyType("Unknown type fullname")
+            }
+            return getInstance(for: type)
+
+        case let type as OKPKeyParamIdentifier:
+            return getInstance(for: type)
+        default:
+            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+        }
+    }
+
+    /// Maps the OKPKeyParamIdentifier to its corresponding class type.
+    public static func getInstance(for identifier: OKPKeyParamIdentifier) -> OKPKeyParam {
+        switch identifier {
+        case .curve:
+            return OKPKpCurve()
+        case .x:
+            return OKPKpX()
+        case .d:
+            return OKPKpD()
+        }
     }
 }
 
@@ -148,7 +281,8 @@ public class OKPKpCurve: OKPKeyParam {
     public init() {
         super.init(
             identifier: .curve,
-            fullname: "CURVE"
+            fullname: "CURVE",
+            valueParser: CoseCurve.fromId
         )
     }
 }
@@ -187,15 +321,101 @@ public enum RSAKeyParamIdentifier: Int, Codable, Equatable {
     case r_i = -10
     case d_i = -11
     case t_i = -12
+    
+    /// Returns the appropriate `RSAKeyParamIdentifier` for the given fullname.
+    /// - Parameter fullname: The string fullname of the RSA key parameter.
+    /// - Returns: The corresponding `RSAKeyParamIdentifier` if found, otherwise nil.
+    public static func fromFullName(_ fullname: String) -> RSAKeyParamIdentifier? {
+        switch fullname.uppercased() {
+            case "N":
+                return .n
+            case "E":
+                return .e
+            case "D":
+                return .d
+            case "P":
+                return .p
+            case "Q":
+                return .q
+            case "DP":
+                return .dp
+            case "DQ":
+                return .dq
+            case "QINV":
+                return .qInv
+            case "OTHER":
+                return .other
+            case "R_I":
+                return .r_i
+            case "D_I":
+                return .d_i
+            case "T_I":
+                return .t_i
+            default:
+                return nil
+        }
+    }
 }
 
 // Base class for RSA key parameters
-public class RSAKeyParam: CoseAttribute {
+public class RSAKeyParam: CoseKeyParam {
     public init(
         identifier: RSAKeyParamIdentifier,
         fullname: String
     ) {
         super.init(identifier: identifier.rawValue, fullname: fullname)
+    }
+    
+    /// Returns the specific RSAKeyParam subclass for a given identifier.
+    public static func fromId(for identifier: Any) throws -> RSAKeyParam {
+        switch identifier {
+        case let id as Int:
+            guard let keyType = RSAKeyParamIdentifier(rawValue: id) else {
+                throw CoseError.invalidKeyType("Unknown RSAKeyParam identifier")
+            }
+            return getInstance(for: keyType)
+
+        case let name as String:
+            guard let type = RSAKeyParamIdentifier.fromFullName(name) else {
+                throw CoseError.invalidKeyType("Unknown type fullname")
+            }
+            return getInstance(for: type)
+
+        case let type as RSAKeyParamIdentifier:
+            return getInstance(for: type)
+        default:
+            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+        }
+    }
+
+    /// Maps the RSAKeyParamIdentifier to its corresponding class type.
+    public static func getInstance(for identifier: RSAKeyParamIdentifier) -> RSAKeyParam {
+        switch identifier {
+        case .n:
+            return RSAKpN()
+        case .e:
+            return RSAKpE()
+        case .d:
+            return RSAKpD()
+        case .p:
+            return RSAKpP()
+        case .q:
+            return RSAKpQ()
+        case .dp:
+            return RSAKpDP()
+        case .dq:
+            return RSAKpDQ()
+        case .qInv:
+            return RSAKpQInv()
+        case .other:
+            return RSAKpOther()
+        case .r_i:
+            return RSAKpRi()
+        case .d_i:
+            return RSAKpDi()
+        case .t_i:
+            return RSAKpTi()
+        }
     }
 }
 
@@ -314,15 +534,57 @@ public class RSAKpTi: RSAKeyParam {
 /// Enumerates the EC2 key parameters
 public enum SymmetricKeyParamIdentifier: Int, Codable, Equatable {
     case k = -1
+    
+    /// Returns the appropriate `SymmetricKeyParamIdentifier` for the given fullname.
+    /// - Parameter fullname: The string fullname of the RSA key parameter.
+    /// - Returns: The corresponding `SymmetricKeyParamIdentifier` if found, otherwise nil.
+    public static func fromFullName(_ fullname: String) -> SymmetricKeyParamIdentifier? {
+        switch fullname.uppercased() {
+            case "K":
+                return .k
+            default:
+                return nil
+        }
+    }
 }
 
 // Base class for Symmetric key parameters
-public class SymmetricKeyParam: CoseAttribute {
+public class SymmetricKeyParam: CoseKeyParam {
     public init(
         identifier: SymmetricKeyParamIdentifier,
         fullname: String
     ) {
         super.init(identifier: identifier.rawValue, fullname: fullname)
+    }
+    
+    /// Returns the specific SymmetricKeyParam subclass for a given identifier.
+    public static func fromId(for identifier: Any) throws -> SymmetricKeyParam {
+        switch identifier {
+        case let id as Int:
+            guard let keyType = SymmetricKeyParamIdentifier(rawValue: id) else {
+                throw CoseError.invalidKeyType("Unknown SymmetricKeyParam identifier")
+            }
+            return getInstance(for: keyType)
+
+        case let name as String:
+            guard let type = SymmetricKeyParamIdentifier.fromFullName(name) else {
+                throw CoseError.invalidKeyType("Unknown type fullname")
+            }
+            return getInstance(for: type)
+
+        case let type as SymmetricKeyParamIdentifier:
+            return getInstance(for: type)
+        default:
+            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+        }
+    }
+
+    /// Maps the SymmetricKeyParamIdentifier to its corresponding class type.
+    public static func getInstance(for identifier: SymmetricKeyParamIdentifier) -> SymmetricKeyParam {
+        switch identifier {
+        case .k:
+            return SymKpK()
+        }
     }
 }
 

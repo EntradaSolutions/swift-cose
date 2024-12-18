@@ -1,78 +1,306 @@
 import Foundation
 import CryptoKit
+import PotentCodables
 
 public class OKPKey: CoseKey {
-    public var curve: CoseCurve
-    public var x: Data
-    public var d: Data?
-    public var optionalParams: [String: Any]
-    public var allowUnknownKeyAttrs: Bool
-
-    public init(curve: CoseCurve, x: Data, d: Data? = nil, optionalParams: [String: Any] = [:], allowUnknownKeyAttrs: Bool = true) throws {
+    private var _curve: CoseCurve?
+    public var optionalParams: [AnyHashable: Any]
+    
+    
+    // MARK: - curve Property
+    
+    /// The mandatory `OKPKpCurve` attribute of the COSE OKP Key object.
+    public var curve: CoseCurve {
+        get {
+            if _curve != nil {
+                return store[OKPKpCurve()] as! CoseCurve
+            } else {
+                fatalError("EC2 COSE key must have the OKPKpCurve attribute")
+            }
+        }
+        set {
+            // Parse and validate the curve
+            guard let parsedCurve = try! OKPKpCurve().valueParser!(newValue) as? CoseCurve else {
+                fatalError("Failed to parse the curve")
+            }
+            
+            if parsedCurve.keyType != .ktyOKP {
+                fatalError("Invalid COSE curve \(parsedCurve) for key type \(OKPKey.self)")
+            }
+            
+            // Store the curve
+            store[OKPKpCurve()] = parsedCurve
+        }
+    }
+    
+    
+    // MARK: - x Property
+    /// The mandatory `OKPKpX` attribute of the COSE OKP Key object.
+    var x: Data {
+        get {
+            return store[OKPKpX()] as! Data
+        }
+        set {
+            store[OKPKpX()] = newValue
+        }
+    }
+    
+    // MARK: - d Property
+    /// The mandatory`OKPKpD` attribute of the COSE OKP Key object.
+    var d: Data {
+        get {
+            return store[OKPKpD()] as! Data
+        }
+        set {
+            store[OKPKpD()] = newValue
+        }
+    }
+    
+    // MARK: - Key Operations
+    private var _keyOps: [KeyOps] = []
+    
+    public override var keyOps: [KeyOps] {
+        get {
+            return _keyOps as [KeyOps]
+        }
+        set {
+            let supportedOps: [KeyOps.Type] = [
+                SignOp.self,
+                VerifyOp.self,
+                DeriveKeyOp.self,
+                DeriveBitsOp.self
+            ]
+            
+            for ops in newValue {
+                // Check if the operation is supported by the key type
+                guard supportedOps.contains(where: { $0 == type(of: ops) }) else {
+                    fatalError("Invalid COSE key operation \(ops) for key type \(OKPKey.self)")
+                }
+            }
+            _keyOps = newValue 
+        }
+    }
+    
+    // MARK: - Initialization Methods
+    /// Create an COSE OKP key.
+    /// - Parameters:
+    ///   - curve: An OKP elliptic curve.
+    ///   - x: Public value of the OKP key.
+    ///   - d: Private value of the OKP key.
+    ///   - optionalParams: A dictionary with optional key parameters.
+    public init(curve: CoseCurve, x: Data, d: Data? = nil, optionalParams: [AnyHashable: Any] = [:]) throws {
+        var transformedDict: [AnyHashable: Any] = [KpKty(): KtyOKP()]
+        
+        // Transform optional parameters
+        for (key, value) in optionalParams {
+            let kp = try OKPKeyParam.fromId(for: key)
+            if let parser = kp.valueParser {
+                transformedDict[kp] = try parser(value)
+            } else {
+                transformedDict[kp] = value
+            }
+        }
+        
+        // Validate key type
+        guard transformedDict[KpKty()] as! CoseAttribute == KtyOKP() else {
+            throw CoseError.invalidKey("Illegal key type in OKP COSE Key: \(String(describing: transformedDict[KpKty()]))")
+        }
         
         guard !x.isEmpty || d != nil else {
             throw CoseError.invalidKey("Public key cannot be empty")
         }
-
+        
+        self.optionalParams = optionalParams
+        
+        super.init(keyDict: transformedDict)
+        
         self.curve = curve
         self.x = x
-        self.d = d
-        self.optionalParams = optionalParams
-        self.allowUnknownKeyAttrs = allowUnknownKeyAttrs
+        self.d = d ?? Data()
     }
-
-    public static func fromDict(_ coseKey: [String: Any]) throws -> OKPKey {
-        guard let curve = coseKey["OKPKpCurve"] as? String,
-              let x = coseKey["OKPKpX"] as? Data else {
-            throw CoseError.invalidKey("Missing required key attributes")
+    
+    // MARK: - Methods
+    
+    /// Returns an initialized COSE Key object of type OKPKey.
+    /// - Parameter coseKey: Dictionary containing COSE Key parameters and there values.
+    /// - Returns: An initialized OKPKey key
+    public override static func fromDictionary(_ coseKey: [AnyHashable: Any]) throws -> OKPKey {
+        let x = CoseKey.extractFromDict(coseKey, parameter: OKPKpX())
+        let d = CoseKey.extractFromDict(coseKey, parameter: OKPKpD())
+        let curveData = CoseKey.extractFromDict(coseKey, parameter: OKPKpCurve(), defaultValue: nil)
+        let curve = try CoseCurve.fromId(for: curveData)
+        
+        var optionalParams: [AnyHashable : Any] = coseKey
+        CoseKey.removeFromDict(&optionalParams, parameter: OKPKpX())
+        CoseKey.removeFromDict(&optionalParams, parameter: OKPKpD())
+        CoseKey.removeFromDict(&optionalParams, parameter: OKPKpCurve())
+        
+        return try OKPKey(
+            curve: curve,
+            x: x as! Data,
+            d: d as? Data,
+            optionalParams: optionalParams
+        )
+    }
+    
+    /// Returns an initialized COSE Key object of type `OKPKey`
+    /// - Parameters:
+    ///   - extKey: A private or public key.
+    ///   - optionalParams: Optional additional parameters.
+    /// - Throws: An error if the key type or curve is unsupported.
+    /// - Returns: An initialized `OKPKey` object.
+    public static func fromCryptographyKey(
+        extKey: Any,
+        optionalParams: [AnyHashable: AnyValue] = [:]
+    ) throws -> OKPKey {
+        let curve = try curveFromCryptoKey(extKey)
+        
+        var x: Data?
+        var d: Data?
+        
+        if let privateKey = extKey as? Curve25519.KeyAgreement.PrivateKey {
+            let publicKey = privateKey.publicKey
+            x = publicKey.rawRepresentation
+            d = privateKey.rawRepresentation
+        } else if let publicKey = extKey as? Curve25519.KeyAgreement.PublicKey {
+            x = publicKey.rawRepresentation
+        } else if let privateKey = extKey as? Curve25519.Signing.PrivateKey {
+            let publicKey = privateKey.publicKey
+            x = publicKey.rawRepresentation
+            d = privateKey.rawRepresentation
+        } else if let publicKey = extKey as? Curve25519.Signing.PublicKey {
+            x = publicKey.rawRepresentation
+        } else if let privateKey = extKey as? Curve448.KeyAgreement.PrivateKey {
+            let publicKey = privateKey.publicKey
+            x = publicKey.rawRepresentation
+            d = privateKey.rawRepresentation
+        } else if let publicKey = extKey as? Curve448.KeyAgreement.PublicKey {
+            x = publicKey.rawRepresentation
+        } else if let privateKey = extKey as? Curve448.Signing.PrivateKey {
+            let publicKey = privateKey.publicKey
+            x = publicKey.rawRepresentation
+            d = privateKey.rawRepresentation
+        } else if let publicKey = extKey as? Curve448.Signing.PublicKey {
+            x = publicKey.rawRepresentation
+        } else {
+            throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
         }
-        let d = coseKey["OKPKpD"] as? Data
-        var optionalParams = coseKey
-        optionalParams.removeValue(forKey: "OKPKpCurve")
-        optionalParams.removeValue(forKey: "OKPKpX")
-        optionalParams.removeValue(forKey: "OKPKpD")
+        
+        var coseKey: [AnyHashable : AnyValue] = [
+            OKPKpCurve(): curve,
+        ] as! [AnyHashable : AnyValue]
+        
+        if let x = x { coseKey[EC2KpX()] = AnyValue.data(x) }
+        if let d = d { coseKey[EC2KpD()] = AnyValue.data(d) }
+        
+        // Merge optional params
+        for (key, value) in optionalParams {
+            coseKey[key] = value
+        }
 
-        return try OKPKey(curve: curve, x: x, d: d, optionalParams: optionalParams)
+        // Initialize OKPKey from dictionary
+        return try OKPKey.fromDictionary(coseKey)
+    }
+    
+    /// Maps an external cryptographic key to a COSE curve type.
+    /// - Parameter extKey: The external cryptographic key (public or private).
+    /// - Returns: A `CoseCurve` representing the curve.
+    /// - Throws: `CoseIllegalKeyType` if the key type is unsupported.
+    public static func curveFromCryptoKey(_ extKey: Any) throws -> CoseCurve {
+        if extKey is Curve25519.Signing.PrivateKey || extKey is Curve25519.Signing.PublicKey {
+            return Ed25519Curve()
+        }
+        if extKey is Curve25519.KeyAgreement.PrivateKey || extKey is Curve25519.KeyAgreement.PublicKey {
+            return X25519Curve()
+        }
+        if extKey is Curve448.Signing.PrivateKey || extKey is Curve448.Signing.PublicKey {
+            return Ed448Curve()
+        }
+        if extKey is Curve448.KeyAgreement.PrivateKey || extKey is Curve448.KeyAgreement.PublicKey {
+            return X448Curve()
+        }
+        
+        throw CoseError.unsupportedCurve("Unsupported key type: \(type(of: extKey))")
+    }
+    
+    /// Checks if the external cryptographic key type is supported.
+    /// - Parameter extKey: The external cryptographic key (public or private).
+    /// - Returns: `true` if the key type is supported; otherwise, `false`.
+    public static func supportsCryptographyKeyType(_ extKey: Any) throws -> Bool {
+        do {
+            _ = try curveFromCryptoKey(extKey)
+            return true
+        } catch CoseError.unsupportedCurve {
+            return false
+        } catch {
+            throw error
+        }
     }
 
     /// Generate a random OKPKey COSE key object.
-    public static func generateKey(curve: CoseCurve, optionalParams: [String: Any] = [:]) throws -> OKPKey {
-        let extKey = curve.curveObj.generateKeyPair()
-        // Parse and validate the curve
-        guard let crv = getSupportedCurve(curve) else {
-            throw CoseError.unsupportedCurve("Unsupported curve: \(curve)")
+    ///
+    /// - Parameters:
+    ///  - curve: Specify an :class:`CoseCurve`.
+    ///  - optionalParams: Optional key attributes for the :class:`OKPKey` object, e.g., `KpAlg` or `KpKid`.
+    /// - Returns: An COSE `OKPKey` key.
+    /// - Throws: `CoseError.unsupportedCurve` if the curve is not supported.
+    public static func generateKey(curve: CoseCurve, optionalParams: [AnyHashable: AnyValue] = [:]) throws -> OKPKey {
+        let crv = try OKPKpCurve().valueParser!(curve) as! CoseCurve
+        
+        if crv.keyType != .ktyOKP {
+            throw CoseError.invalidKey("Invalid curve type \(crv) for key type \(OKPKey.self)")
+        }
+        
+        switch curve.curveType {
+            case .ED25519:
+                let privateKey: Curve25519.Signing.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
+            case .ED448:
+                let privateKey: Curve448.Signing.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
+            case .X25519:
+                let privateKey: Curve25519.KeyAgreement.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
+            case .X448:
+                let privateKey: Curve448.KeyAgreement.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
+            default:
+                throw CoseError.invalidCurve("Invalid curve type")
+        }
+    }
+    
+    // Function to delete a key
+    func delete(key: String) throws {
+        let transformedKey = try OKPKeyParam.fromId(for: key)
+
+        if transformedKey != KpKty() && transformedKey != OKPKpCurve() {
+            if transformedKey == OKPKpD() && store[OKPKpX()] == nil {
+                return  // Do nothing
+            } else if transformedKey == OKPKpX() && store[OKPKpD()] == nil {
+                return  // Do nothing
+            } else {
+                store.removeValue(forKey: key)
+                return
+            }
         }
 
-        let privateKey: any SigningKey
-        let publicKey: Data
-
-        // Key generation logic based on curve type
-        switch crv {
-        case "Ed25519":
-            privateKey = Curve25519.Signing.PrivateKey()
-            publicKey = privateKey.publicKey.rawRepresentation
-        case "Ed448":
-            // Ed448 is not natively supported in Swift; you'd need to use an external library like OpenSSL
-            throw CoseError.unsupportedCurve("Unsupported curve: \(curve)")
-        case "X25519":
-            privateKey = Curve25519.KeyAgreement.PrivateKey()
-            publicKey = privateKey.publicKey.rawRepresentation
-        case "X448":
-            // X448 is not natively supported in Swift; you'd need to use an external library like OpenSSL
-            throw CoseError.unsupportedCurve("Unsupported curve: \(curve)")
-        default:
-            throw CoseError.unsupportedCurve("Unsupported curve: \(curve)")
-        }
-
-        // Prepare private bytes (d) and public bytes (x)
-        let privateBytes = privateKey.rawRepresentation
-
-        // Return the generated OKPKey
-        return try OKPKey(curve: curve, x: publicKey, d: privateBytes, optionalParams: optionalParams)
+        throw CoseError
+            .invalidKey(
+                "Deleting \(key) attribute would lead to an invalid COSE OKP Key"
+            )
     }
 
-    public static func getSupportedCurve(_ curve: String) -> String? {
-        let supportedCurves = ["Ed25519", "Ed448", "X25519", "X448"]
-        return supportedCurves.contains(curve) ? curve : nil
+    // Custom description for the object
+    public override var description: String {
+        var keyRepresentation = keyRepr()
+        
+        if let okpD = keyRepresentation[OKPKpD()] as? Data, !okpD.isEmpty {
+            keyRepresentation[OKPKpD()] = truncate(okpD.base64EncodedString())
+        }
+        if let okpX = keyRepresentation[OKPKpX()] as? Data, !okpX.isEmpty {
+            keyRepresentation[OKPKpX()] = truncate(okpX.base64EncodedString())
+        }
+
+        return "<COSE_Key(OKPKey): \(keyRepresentation)>"
     }
 }

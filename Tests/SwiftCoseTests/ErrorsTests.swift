@@ -17,10 +17,10 @@ final class CoseErrorTests: XCTestCase {
     
     func testIllegalAlgorithm() {
         let errorMessage = "Algorithm not supported"
-        let error = CoseError.illegalAlgorithm(errorMessage)
+        let error = CoseError.invalidAlgorithm(errorMessage)
         
         switch error {
-        case .illegalAlgorithm(let message):
+        case .invalidAlgorithm(let message):
             XCTAssertEqual(message, errorMessage, "The illegal algorithm message should match the provided string.")
         default:
             XCTFail("Expected .illegalAlgorithm case.")
@@ -29,10 +29,10 @@ final class CoseErrorTests: XCTestCase {
     
     func testIllegalKeyOps() {
         let errorMessage = "Invalid key operations"
-        let error = CoseError.illegalKeyOps(errorMessage)
+        let error = CoseError.invalidKeyOps(errorMessage)
         
         switch error {
-        case .illegalKeyOps(let message):
+        case .invalidKeyOps(let message):
             XCTAssertEqual(message, errorMessage, "The illegal key operations message should match the provided string.")
         default:
             XCTFail("Expected .illegalKeyOps case.")
@@ -41,10 +41,10 @@ final class CoseErrorTests: XCTestCase {
     
     func testIllegalKeyType() {
         let errorMessage = "Invalid key type"
-        let error = CoseError.illegalKeyType(errorMessage)
+        let error = CoseError.invalidKeyType(errorMessage)
         
         switch error {
-        case .illegalKeyType(let message):
+        case .invalidKeyType(let message):
             XCTAssertEqual(message, errorMessage, "The illegal key type message should match the provided string.")
         default:
             XCTFail("Expected .illegalKeyType case.")

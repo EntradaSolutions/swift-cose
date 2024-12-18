@@ -8,7 +8,7 @@ public class CoseSignature: SignCommon {
         return -1 // No specific CBOR tag for CoseSignature
     }
     
-    public var signature: Data {
+    public override var signature: Data {
         get { payload ?? Data() }
         set {
             guard !newValue.isEmpty else {

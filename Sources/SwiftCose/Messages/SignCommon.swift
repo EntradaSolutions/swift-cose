@@ -1,10 +1,10 @@
 import Foundation
 
 /// Abstract base class for SignCommon
-open class SignCommon: CoseMessage {
+public class SignCommon: CoseMessage {
 
     // MARK: - Abstract Properties
-    open var signature: Data {
+    public var signature: Data {
         fatalError("Subclasses must implement the 'signature' property")
     }
 
@@ -12,7 +12,7 @@ open class SignCommon: CoseMessage {
     /// Creates the signature structure. Must be implemented by subclasses.
     /// - Parameter detachedPayload: The optional detached payload.
     /// - Returns: The byte representation of the signature structure.
-    open func createSigStructure(detachedPayload: Data? = nil) -> Data {
+    public func createSigStructure(detachedPayload: Data? = nil) -> Data {
         fatalError("Subclasses must implement the 'createSigStructure' method")
     }
 
@@ -21,7 +21,7 @@ open class SignCommon: CoseMessage {
     /// - Parameters:
     ///   - alg: The algorithm type.
     ///   - ops: The key operations.
-    func keyVerification(alg: CoseAlgorithm, ops: KeyOps) throws {
+    public func keyVerification(alg: CoseAlgorithm, ops: KeyOps) throws {
         guard let key = self.key else {
             throw CoseError.invalidKey("Key cannot be nil")
         }

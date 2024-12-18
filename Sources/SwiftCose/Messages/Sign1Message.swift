@@ -12,7 +12,7 @@ public class Sign1Message: CoseMessage {
     private var signature: Data = Data()
     
     // MARK: - Initialization
-    public required init(phdr: [String: CoseHeaderAttribute]? = nil,
+    public required override init(phdr: [String: CoseHeaderAttribute]? = nil,
                          uhdr: [String: CoseHeaderAttribute]? = nil,
                          payload: Data? = nil,
                          externalAAD: Data = Data(),

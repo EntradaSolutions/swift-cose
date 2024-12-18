@@ -62,8 +62,137 @@ public enum CoseAlgorithmIdentifier: Int, Codable, Equatable {
     case sha512_256 = -17
     case shake128 = -18
     case shake256 = -45
+    
+    /// Returns the appropriate `CoseAlgorithmIdentifier` for the given fullname.
+    /// - Parameter fullname: The string fullname of the algorithm.
+    /// - Returns: The corresponding `CoseAlgorithmIdentifier` if found, otherwise nil.
+    public static func fromFullName(_ fullName: String) -> CoseAlgorithmIdentifier? {
+        switch fullName {
+        case "AES_CCM_16_64_128":
+            return .aesCCM_16_64_128
+        case "AES_CCM_16_64_256":
+            return .aesCCM_16_64_256
+        case "AES_CCM_64_64_128":
+            return .aesCCM_64_64_128
+        case "AES_CCM_64_64_256":
+            return .aesCCM_64_64_256
+        case "AES_CCM_16_128_128":
+            return .aesCCM_16_128_128
+        case "AES_CCM_16_128_256":
+            return .aesCCM_16_128_256
+        case "AES_CCM_64_128_128":
+            return .aesCCM_64_128_128
+        case "AES_CCM_64_128_256":
+            return .aesCCM_64_128_256
+        case "AES_GCM_128":
+            return .aesGCM_128
+        case "AES_GCM_192":
+            return .aesGCM_192
+        case "AES_GCM_256":
+            return .aesGCM_256
+        case "AES_KW_128":
+            return .aesKW_128
+        case "AES_KW_192":
+            return .aesKW_192
+        case "AES_KW_256":
+            return .aesKW_256
+        case "AES_MAC_128_64":
+            return .aesMAC_128_64
+        case "AES_MAC_256_64":
+            return .aesMAC_256_64
+        case "AES_MAC_128_128":
+            return .aesMAC_128_128
+        case "AES_MAC_256_128":
+            return .aesMAC_256_128
+        case "DIRECT":
+            return .direct
+        case "DIRECT_HKDF_AES_128":
+            return .directHKDFAES128
+        case "DIRECT_HKDF_AES_256":
+            return .directHKDFAES256
+        case "DIRECT_HKDF_SHA_256":
+            return .directHKDFSHA256
+        case "DIRECT_HKDF_SHA_512":
+            return .direcHKDFSHA512
+        case "EDDSA":
+            return .edDSA
+        case "ES256":
+            return .es256
+        case "ES384":
+            return .es384
+        case "ES512":
+            return .es512
+        case "ECDH_ES_A128KW":
+            return .ecdhES_A128KW
+        case "ECDH_ES_A192KW":
+            return .ecdhES_A192KW
+        case "ECDH_ES_A256KW":
+            return .ecdhES_A256KW
+        case "ECDH_ES_HKDF_256":
+            return .ecdhES_HKDF_256
+        case "ECDH_ES_HKDF_512":
+            return .ecdhES_HKDF_512
+        case "ECDH_SS_A128KW":
+            return .ecdhSS_A128KW
+        case "ECDH_SS_A192KW":
+            return .ecdhSS_A192KW
+        case "ECDH_SS_A256KW":
+            return .ecdhSS_A256KW
+        case "ECDH_SS_HKDF_256":
+            return .ecdhSS_HKDF_256
+        case "ECDH_SS_HKDF_512":
+            return .ecdhSS_HKDF_512
+        case "HMAC_SHA256":
+            return .hmacSHA256
+        case "HMAC_SHA256_64":
+            return .hmacSHA256_64
+        case "HMAC_SHA384":
+            return .hmacSHA384
+        case "HMAC_SHA512":
+            return .hmacSHA512
+        case "PS256":
+            return .ps256
+        case "PS384":
+            return .ps384
+        case "PS512":
+            return .ps512
+        case "RSA_ES_OAEP_SHA1":
+            return .rsa_ES_OAEP_SHA1
+        case "RSA_ES_OAEP_SHA256":
+            return .rsa_ES_OAEP_SHA256
+        case "RSA_ES_OAEP_SHA512":
+            return .rsa_ES_OAEP_SHA512
+        case "RSA_PKCS1_SHA1":
+            return .rsa_PKCS1_SHA1
+        case "RSA_PKCS1_SHA256":
+            return .rsa_PKCS1_SHA256
+        case "RSA_PKCS1_SHA384":
+            return .rsa_PKCS1_SHA384
+        case "RSA_PKCS1_SHA512":
+            return .rsa_PKCS1_SHA512
+        case "SHA1":
+            return .sha1
+        case "SHA256":
+            return .sha256
+        case "SHA256_64":
+            return .sha256_64
+        case "SHA384":
+            return .sha384
+        case "SHA512":
+            return .sha512
+        case "SHA512_256":
+            return .sha512_256
+        case "SHAKE128":
+            return .shake128
+        case "SHAKE256":
+            return .shake256
+        default:
+            return nil
+        }
+    }
 }
 
+/// Base class for all COSE algorithms.
 public class CoseAlgorithm: CoseAttribute {
     public init(
         identifier: CoseAlgorithmIdentifier,
@@ -73,7 +202,32 @@ public class CoseAlgorithm: CoseAttribute {
         super.init(identifier: identifier.rawValue, fullname: fullname, valueParser: valueParser)
     }
 
-    public static func getInstance(for identifier: CoseAlgorithmIdentifier) throws -> CoseAlgorithm {
+    public static func fromId(for attribute: Any) throws -> CoseAlgorithm {
+        switch attribute {
+            case let id as Int:
+                // If the identifier is an Int, convert it to CoseAlgorithmIdentifier
+                guard let alg = CoseAlgorithmIdentifier(rawValue: id) else {
+                    throw CoseError.invalidAlgorithm("Unknown algorithm identifier")
+                }
+                return getInstance(for: alg)
+                
+            case let name as String:
+                // If the identifier is a String, attempt to match it to a CoseAlgorithmIdentifier
+                guard let alg = CoseAlgorithmIdentifier.fromFullName(name) else {
+                    throw CoseError.invalidAlgorithm("Unknown algorithm fullname")
+                }
+                return getInstance(for: alg)
+                
+            case let alg as CoseAlgorithmIdentifier:
+                // If the identifier is already a CoseAlgorithmIdentifier, get the instance directly
+                return getInstance(for: alg)
+                
+            default:
+                throw CoseError.invalidAlgorithm("Unsupported identifier type. Must be Int, String, or CoseAlgorithmIdentifier")
+        }
+    }
+    
+    public static func getInstance(for identifier: CoseAlgorithmIdentifier) -> CoseAlgorithm {
         switch identifier {
             case .direct:
                 return Direct()
@@ -256,23 +410,23 @@ public class EdDSA: CoseAlgorithm {
     public class func sign(key: OKPKey, data: Data) throws -> Data {
         switch key.curve.fullname {
         case "ED25519":
-                guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d!) else {
+            guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d!) else {
                 throw CoseError.invalidKey("Invalid private key")
             }
             return try privateKey.signature(for: data)
             
         case "ED448":
-                guard let privateKey = try? Curve448.KeyAgreement.PrivateKey(rawRepresentation: key.d!) else {
+            guard let privateKey = try? Curve448.Signing.PrivateKey(rawRepresentation: key.d!) else {
                 throw CoseError.invalidKey("Invalid private key")
             }
-            return privateKey.signature(for: data)
+            return try privateKey.signature(for: data)
             
         default:
-            throw CoseError.illegalCurve("Unsupported curve")
+            throw CoseError.invalidCurve("Unsupported curve")
         }
     }
 
-    public class func verify(key: OKPKey, data: Data, signature: Data) -> Bool {
+    public class func verify(key: OKPKey, data: Data, signature: Data) throws -> Bool {
         switch key.curve.fullname {
         case "ED25519":
             guard let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key.x) else {
@@ -282,10 +436,10 @@ public class EdDSA: CoseAlgorithm {
             
         case "ED448":
             // Assuming Ed448 functionality is available in your crypto library
-                guard let publicKey = try? Curve448.KeyAgreement.PublicKey(rawRepresentation: key.x) else {
+            guard let publicKey = try? Curve448.Signing.PublicKey(rawRepresentation: key.x) else {
                 return false
             }
-            return publicKey.isValidSignature(signature, for: data)
+            return try publicKey.isValidSignature(signature, for: data)
             
         default:
             return false
