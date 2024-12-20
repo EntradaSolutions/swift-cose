@@ -23,21 +23,22 @@ public class HmacAlgorithm: CoseAlgorithm {
         super.init(identifier: identifier, fullname: fullname)
     }
     
-    public func computeTag(key: SymmetricKey, data: Data) throws -> Data {
+    public func computeTag(key: CoseSymmetricKey, data: Data) throws -> Data {
         var out: Data
+        let symKey = SymmetricKey(data: key.k)
         switch hashFunction {
             case .sha256:
-                var hmac = HMAC<SHA256>.init(key: key)
+                var hmac = HMAC<SHA256>.init(key: symKey)
                 hmac.update(data: data)
                 let digest = hmac.finalize()
                 out = digest.withUnsafeBytes { Data($0) }
             case .sha384:
-                var hmac = HMAC<SHA384>.init(key: key)
+                var hmac = HMAC<SHA384>.init(key: symKey)
                 hmac.update(data: data)
                 let digest = hmac.finalize()
                 out = digest.withUnsafeBytes { Data($0) }
             case .sha512:
-                var hmac = HMAC<SHA512>.init(key: key)
+                var hmac = HMAC<SHA512>.init(key: symKey)
                 hmac.update(data: data)
                 let digest = hmac.finalize()
                 out = digest.withUnsafeBytes { Data($0) }
@@ -47,7 +48,7 @@ public class HmacAlgorithm: CoseAlgorithm {
         return out.prefix(digestLength)
     }
     
-    public func verifyTag(key: SymmetricKey, tag: Data, data: Data) throws -> Bool {
+    public func verifyTag(key: CoseSymmetricKey, tag: Data, data: Data) throws -> Bool {
         let computedTag = try computeTag(key: key, data: data)
         return tag == computedTag
     }

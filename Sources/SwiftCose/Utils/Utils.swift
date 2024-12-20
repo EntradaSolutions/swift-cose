@@ -1,6 +1,7 @@
 import Foundation
 import CryptoSwift
 import OrderedCollections
+import PotentCodables
 
 /// Helper function to truncate a string to a maximum length
 /// - Parameters:
@@ -34,6 +35,13 @@ func toBstr(_ dec: BigUInteger) -> Data {
 
 /// Base class for COSE attributes
 public class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomDebugStringConvertible {
+    
+    
+    enum CodingKeys: String, CodingKey {
+        case identifier
+        case fullname
+    }
+    
     public var debugDescription: String {
         return description
     }
@@ -90,4 +98,17 @@ public class CoseAttribute: Comparable, Hashable, CustomStringConvertible, Custo
     public func defaultParser(value: Any) throws -> Any {
         return value
     }
+    
+    // MARK: - Codable Protocol
+//    public init(from decoder: Decoder) throws {
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        self.identifier = try container.decode(Int.self, forKey: .identifier)
+//        self.fullname = try container.decode(String.self, forKey: .fullname)
+//    }
+//    
+//    public func encode(to encoder: Encoder) throws {
+//        var container = encoder.container(keyedBy: CodingKeys.self)
+//        try container.encode(identifier, forKey: .identifier)
+////        try container.encode(fullname, forKey: .fullname)
+//    }
 }

@@ -8,6 +8,9 @@ public class SignMessage: CoseMessage {
     public var context: String {
         return "Signature"
     }
+    public override var cborTag: Int {
+        return 98 // CBOR tag for SignMessage
+    }
     
     public var signers: [CoseSignature] = []
     

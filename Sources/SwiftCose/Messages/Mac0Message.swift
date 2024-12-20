@@ -4,21 +4,17 @@ import PotentCBOR
 /// COSE_Mac0 message type
 public class Mac0Message: MacCommon {
     // MARK: - Properties
-    public override var cborTag: Int {
-        return 17
-    }
-    
-    public var authTag: Data?
+    public override var context: String { "MAC0" }
+    public override var cborTag: Int { 17 }
 
     // MARK: - Initialization
-    public init(phdr: [String: CoseHeaderAttribute]? = nil,
-                uhdr: [String: CoseHeaderAttribute]? = nil,
+    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+                uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseKey? = nil,
-                authTag: Data? = nil) throws {
-        self.authTag = authTag
-        try super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
+                key: CoseSymmetricKey? = nil,
+                authTag: Data? = nil) {
+        super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
     }
 
     // MARK: - Methods
@@ -27,18 +23,19 @@ public class Mac0Message: MacCommon {
     ///   - coseObj: The COSE object represented as a CBOR array.
     ///   - allowUnknownAttributes: Flag to allow unknown attributes.
     /// - Returns: A decoded Mac0Message instance.
-    public override class func fromCoseObj(_ coseObj: [CBOR]) throws -> Self {
-        guard coseObj.count >= 3 else {
-            throw CoseError.invalidMessage("COSE object must have at least 3 elements.")
+    public override class func fromCoseObject(coseObj: inout [Any]) throws -> Mac0Message {
+        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? Mac0Message else {
+            throw CoseError.invalidMessage("Failed to decode base EncMessage.")
         }
 
-        let authTag = coseObj.last?.dataValue
-        var obj = coseObj
-        _ = obj.removeLast() // Remove authTag
-
-        let instance = try super.fromCoseObj(obj) as! Mac0Message
-        instance.authTag = authTag
-        return instance
+        // Pop the authTag from the COSE object
+        guard let authTagData = coseObj.first as? Data else {
+            throw CoseError.invalidMessage("Missing or invalid authTag.")
+        }
+        coseObj.removeFirst()
+        msg.authTag = authTagData
+        
+        return msg
     }
 
     /// Encode and protect the COSE_Mac0 message.
@@ -49,32 +46,30 @@ public class Mac0Message: MacCommon {
     public func encode(tag: Bool = true, mac: Bool = true) throws -> Data {
         var message: [CBOR] = []
         
-        message.append(phdrEncoded?.toCBOR ?? Data().toCBOR)
-        message.append(uhdrEncoded?.toCBOR ?? Data().toCBOR)
-        message.append(payload.toCBOR)
-        
         if mac {
-            guard let computedTag = computeTag() else {
-                throw CoseError.invalidMessage("Unable to compute MAC tag.")
-            }
-            message.append(computedTag.toCBOR)
+            let computedTag = try self.computeTag()
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null,
+                computedTag.toCBOR]
+        } else {
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null]
         }
         
-        return try super.encode(message: message, tag: tag)
-    }
-
-    /// Compute the MAC tag (Placeholder: Implement your actual MAC computation logic).
-    private func computeTag() -> Data? {
-        // Replace this with actual MAC computation logic
-        return "dummy_tag".data(using: .utf8)
+        let result = try super.encode(message: message, tag: tag)
+        
+        return result
     }
 
     public override var description: String {
-        let phdrDescription = phdrEncoded?.description ?? "nil"
-        let uhdrDescription = uhdrEncoded?.description ?? "nil"
-        let payloadDescription = String(data: payload, encoding: .utf8) ?? "nil"
-        let authTagDescription = authTag?.description ?? "nil"
+        let (phdr, uhdr) = hdrRepr()
+        let payloadDescription = truncate((payload?.base64EncodedString())!)
+        let authTagDescription = truncate((authTag.base64EncodedString()))
 
-        return "<Mac0Message: [phdr: \(phdrDescription), uhdr: \(uhdrDescription), payload: \(payloadDescription), authTag: \(authTagDescription)]>"
+        return "<Mac0Message: [phdr: \(phdr), uhdr: \(uhdr), payload: \(String(describing: payloadDescription)), authTag: \(authTagDescription)]>"
     }
 }

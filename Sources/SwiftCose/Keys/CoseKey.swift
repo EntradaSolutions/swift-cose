@@ -204,18 +204,18 @@ public class CoseKey: CustomStringConvertible {
     }
     
     // MARK: - Key Attributes
-    public var kty: String? {
+    public var kty: KTY? {
         get {
-            return store[KpKty()] as? String
+            return store[KpKty()] as? KTY
         }
         set {
             store[KpKty()] = newValue
         }
     }
     
-    public var alg: String? {
+    public var alg: CoseAlgorithm? {
         get {
-            return store[KpAlg()] as? String
+            return store[KpAlg()] as? CoseAlgorithm
         }
         set {
             store[KpAlg()] = newValue
@@ -231,7 +231,7 @@ public class CoseKey: CustomStringConvertible {
         }
     }
     
-    public var baseIv: Data? {
+    public var baseIV: Data? {
         get {
             return store[KpBaseIV()] as? Data
         }
@@ -241,7 +241,7 @@ public class CoseKey: CustomStringConvertible {
     }
     
     // MARK: - Verification
-    public func verify(keyType: CoseKey.Type, algorithm: String, keyOps: [String]) throws {
+    public func verify(keyType: CoseKey.Type, algorithm: CoseAlgorithm, keyOps: [KeyOps]) throws {
         guard type(of: self) == keyType else {
             throw CoseError.invalidKeyType("Invalid key type")
         }
@@ -250,7 +250,7 @@ public class CoseKey: CustomStringConvertible {
             throw CoseError.invalidAlgorithm("Invalid algorithm")
         }
         
-        let supportedOps = self.keyOps.map { $0 as! String }
+        let supportedOps = self.keyOps.map { $0 }
         let requestedOps = Set(keyOps)
         if !requestedOps.isSubset(of: supportedOps) {
             throw CoseError.invalidKeyOps("Invalid key operations")

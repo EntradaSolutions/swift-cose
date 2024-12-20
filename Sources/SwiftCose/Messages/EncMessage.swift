@@ -3,78 +3,170 @@ import PotentCBOR
 
 /// EncMessage class for handling COSE_Encrypt messages.
 public class EncMessage: EncCommon {
+    // MARK: - Properties
     public override var context: String { "Encrypt" }
     public override var cborTag: Int { 96 }
     
-    public var recipients: [CoseRecipient] = []
+    public var recipients: [CoseRecipient] {
+        get {
+            return _recipients
+        }
+        set {
+            _recipients = []
+            for recipient in newValue {
+                _recipients.append(recipient)
+            }
+        }
+    }
+
+    private var _recipients: [CoseRecipient] = []
 
     // MARK: - Initialization
-    public required init(phdr: [String: CoseHeaderAttribute]? = nil,
+    /// Create a COSE_Encrypt message.
+    /// - Parameters:
+    ///   - phdr: Protected header bucket.
+    ///   - uhdr: Unprotected header bucket.
+    ///   - payload: The payload of the COSE_Encrypt message.
+    ///   - externalAad: External additional data (is authenticated by not included in the final message)
+    ///   - key: The Symmetric COSE key for encryption/decryption of the message
+    ///   - recipients: An optional list of `CoseRecipient` objects.
+    /// - Returns: A COSE Encrypt0 message object.
+    public init(phdr: [String: CoseHeaderAttribute]? = nil,
                          uhdr: [String: CoseHeaderAttribute]? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
-                         key: CoseKey? = nil,
-                         recipients: [CoseRecipient]? = nil) throws {
-        try super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
+                         key: CoseSymmetricKey? = nil,
+                         recipients: [CoseRecipient]? = nil) {
+        super.init(phdr: phdr,
+                   uhdr: uhdr,
+                   payload: payload,
+                   externalAAD: externalAAD,
+                   key: key)
         self.recipients = recipients ?? []
+    }
+    
+    // MARK: - Methods
+    /// Function to decode a COSE_Encrypt message
+    /// - Parameter coseObj: The array to decode.
+    /// - Returns: The decoded Enc0Message.
+    public override class func fromCoseObject(coseObj: inout [Any]) throws -> EncMessage {
+        // Decode base message using the superclass method
+        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? EncMessage else {
+            throw CoseError.invalidMessage("Failed to decode base EncMessage.")
+        }
+        
+        do {
+            // Attempt to parse recipients from the first element of coseObj
+            if let recipientArray = coseObj.first as? [Any] {
+                coseObj.removeFirst()
+                let recipients = try recipientArray.map {
+                    try CoseRecipient.createRecipient(from: $0, allowUnknownAttributes: true, context: "Enc_Recipient")
+                }
+                msg.recipients = recipients
+            } else {
+                msg.recipients = [] // If no recipients found, assign an empty array
+            }
+        } catch {
+            throw CoseError.valueError("Failed to decode recipients.")
+        }
+        
+        return msg
     }
 
     // MARK: - Encoding
+    ///  Encodes and protects the COSE_Encrypt message
+    /// - Parameters:
+    ///   - tag: The boolean value which indicates if the COSE message will have a CBOR tag.
+    ///   - encrypt: The boolean value which activates or deactivates the payload
+    /// - Returns: The CBOR-encoded COSE Encrypt message.
     public func encode(tag: Bool = true, encrypt: Bool = true) throws -> Data {
         var message: [CBOR] = []
-        
-        // Encode headers and payload
+
         if encrypt {
-            message = [phdrEncoded?.toCBOR ?? CBOR.null, uhdrEncoded?.toCBOR ?? CBOR.null, try self.encrypt()]
+            let encrypted = try self.encrypt()
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                encrypted.toCBOR]
         } else {
-            message = [phdrEncoded?.toCBOR ?? CBOR.null, uhdrEncoded?.toCBOR ?? CBOR.null, self.payload.toCBOR]
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null]
         }
         
-        // Append recipients
-        if !recipients.isEmpty {
-            let recipientData = try recipients.map { try $0.encode(targetAlg: self.getHeaderAttribute(.algorithm)) }
+        if !self.recipients.isEmpty {
+            guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
+                throw CoseError.invalidAlgorithm("Algorithm not found in headers")
+            }
+            
+            let recipientData = try recipients.map {
+                try $0
+                    .encode(
+                        targetAlg: alg
+                    ).toCBOR
+            }
             message.append(CBOR.array(recipientData))
         }
         
-        return try super.encode(message: message, tag: tag)
+        let result = try super.encode(message: message, tag: tag)
+        
+        return result
     }
     
     // MARK: - Encryption
-    public func encrypt() throws -> Data {
-        let targetAlgorithm = try self.getHeaderAttribute(.algorithm) as Algorithm
+    public override func encrypt() throws -> Data {
+        guard let targetAlgorithm = try getAttr(Algorithm()) as? EncAlgorithm else {
+            throw CoseError.invalidAlgorithm("Algorithm not found in headers")
+        }
+        
         let recipientTypes = try CoseRecipient.verifyRecipients(recipients)
         
         if recipientTypes.contains(DirectEncryption.self) {
             return try super.encrypt()
         } else if recipientTypes.contains(DirectKeyAgreement.self) {
-            self.key = try recipients.first?.computeCEK(algorithm: targetAlgorithm, usage: "encrypt")
+            self.key = try recipients.first?
+                .computeCEK(targetAlgorithm: targetAlgorithm, ops: "encrypt")
             return try super.encrypt()
         } else if recipientTypes.contains(KeyWrap.self) || recipientTypes.contains(KeyAgreementWithKeyWrap.self) {
-            var keyBytes = Data(count: targetAlgorithm.keyLength)
+            var keyBytes = Data(count: targetAlgorithm.keyLength!)
             _ = keyBytes.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, keyBytes.count, $0.baseAddress!) }
             
             for recipient in recipients {
-                if recipient.payload.isEmpty {
+                if ((recipient.payload?.isEmpty) != nil) {
                     recipient.payload = keyBytes
                 } else {
-                    keyBytes = recipient.payload
+                    keyBytes = recipient.payload!
                 }
-                try recipient.encrypt(algorithm: targetAlgorithm)
+                if let recipient = recipient as? KeyAgreementWithKeyWrap {
+                    let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm)
+                } else if let recipient = recipient as? KeyWrap {
+                    let _ = try recipient.encrypt(targetAlg: targetAlgorithm)
+                } else {
+                    throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
+                }
             }
             
-            self.key = SymmetricKey(k: keyBytes, optionalParams: [KpAlg: targetAlgorithm, KpKeyOps: [.encrypt]])
+            self.key = try CoseSymmetricKey(
+                k: keyBytes,
+                optionalParams: [KpAlg(): targetAlgorithm,
+                                 KpKeyOps(): [EncryptOp()]]
+            )
             return try super.encrypt()
         } else {
-            throw CoseError.unsupportedRecipientType("Unsupported COSE recipient class")
+            throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
         }
     }
 
     // MARK: - Decryption
     public func decrypt(recipient: CoseRecipient) throws -> Data {
-        let targetAlgorithm = try self.getHeaderAttribute(.algorithm) as Algorithm
+        guard let targetAlgorithm = try getAttr(Algorithm()) as? EncAlgorithm else {
+            throw CoseError.invalidAlgorithm("Algorithm not found in headers")
+        }
         
-        guard CoseRecipient.hasRecipient(recipient, in: recipients) else {
-            throw CoseError.recipientNotFound("Recipient not found")
+        guard CoseRecipient
+            .hasRecipient(target: recipient, in: recipients) else {
+            throw CoseError.valueError("Recipient not found")
         }
         
         let recipientTypes = try CoseRecipient.verifyRecipients(recipients)
@@ -82,18 +174,18 @@ public class EncMessage: EncCommon {
         if recipientTypes.contains(DirectEncryption.self) {
             return try super.decrypt()
         } else if recipientTypes.contains(DirectKeyAgreement.self) || recipientTypes.contains(KeyWrap.self) || recipientTypes.contains(KeyAgreementWithKeyWrap.self) {
-            self.key = try recipient.computeCEK(algorithm: targetAlgorithm, usage: "decrypt")
+            self.key = try recipient
+                .computeCEK(targetAlgorithm: targetAlgorithm, ops: "decrypt")
             return try super.decrypt()
         } else {
-            throw CoseError.unsupportedRecipientType("Unsupported COSE recipient class")
+            throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
         }
     }
     
     // MARK: - Representation
     public override var description: String {
-        let phdrDesc = phdr?.description ?? "nil"
-        let uhdrDesc = uhdr?.description ?? "nil"
+        let (phdr, uhdr) = hdrRepr()
         let recipientsDesc = recipients.map { $0.description }.joined(separator: ", ")
-        return "<EncMessage: [\(phdrDesc), \(uhdrDesc), \(payload), [\(recipientsDesc)]]>"
+        return "<COSE_Recipient: [\(phdr), \(uhdr), \(truncate((self.payload?.base64EncodedString())!)), \(recipientsDesc)]"
     }
 }

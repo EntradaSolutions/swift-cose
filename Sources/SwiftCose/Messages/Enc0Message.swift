@@ -6,80 +6,68 @@ public class Enc0Message: EncCommon {
     public override var context: String { "Encrypt0" }
     public override var cborTag: Int { 16 }
 
-    // MARK: - Static Properties
-    private static var coseMsgId: [Int: CoseMessage] = [:]
-
-
     // MARK: - Initialization
-    public init(phdr: [String: Any] = [:],
-                uhdr: [String: Any] = [:],
-                payload: Data? = nil,
-                externalAad: Data = Data(),
-                key: CoseKey? = nil) {
-        self.phdr = phdr
-        self.uhdr = uhdr
-        self.payload = payload
-        self.externalAad = externalAad
-        self.key = key
+    /// Create a COSE_encrypt0 message.
+    /// - Parameters:
+    ///   - phdr: Protected header bucket.
+    ///   - uhdr: Unprotected header bucket.
+    ///   - payload: The payload (will be encrypted and authenticated).
+    ///   - externalAad: External data (is authenticated but not transported in the message).
+    ///   - key: The Symmetric COSE key for encryption/decryption of the message
+    /// - Returns: A COSE Encrypt0 message object.
+    public override init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+                         uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+                         payload: Data = Data(),
+                         externalAAD: Data = Data(),
+                         key: CoseSymmetricKey? = nil) {
+        super.init(phdr: phdr,
+                   uhdr: uhdr,
+                   payload: payload,
+                   externalAAD: externalAAD,
+                   key: key)
     }
-
-    // MARK: - Static Methods
-    public class func recordCborTag(_ cborTag: Int, messageType: CoseMessage) {
-        coseMsgId[cborTag] = messageType
-    }
-
-    public class func decode(_ received: Data) throws -> CoseMessage {
-        do {
-            let cborMsg = try CBORSerialization.cbor(from: received)
-            guard let taggedCbor = cborMsg.taggedValue else {
-                throw CoseError.invalidTag("Message was not tagged.")
-            }
-
-            guard let coseObj = taggedCbor.value.arrayValue else {
-                throw CoseError.invalidStructure("Expected CBOR array structure.")
-            }
-
-            guard let messageType = coseMsgId[taggedCbor.tag] else {
-                throw CoseError.unrecognizedTag("Unrecognized CBOR tag: \(taggedCbor.tag)")
-            }
-
-            let message = try messageType.fromCborObject(coseObj)
-            return message
-        } catch {
-            throw error
-        }
-    }
-
-    public class func fromCborObject(_ cborObject: [CBOR]) throws -> CoseMessage {
-        let phdr = cborObject[0].dictionaryValue ?? [:]
-        let uhdr = cborObject[1].dictionaryValue ?? [:]
-        let payload = cborObject[2].dataValue
-
-        return CoseMessage(phdr: phdr, uhdr: uhdr, payload: payload)
+    
+    // MARK: - Methods
+    /// Function to decode a COSE_Encrypt0 message
+    /// - Parameter coseObj: The array to decode.
+    /// - Returns: The decoded Enc0Message.
+    public override class func fromCoseObject(coseObj: inout [Any]) throws -> Enc0Message {
+        return try super.fromCoseObject(
+            coseObj: &coseObj
+        ) as! Enc0Message
     }
 
     // MARK: - Encoding
-    public func encode(tag: Bool = true) throws -> Data {
+    /// Encode and protect the COSE_Encrypt0 message.
+    /// - Parameters:
+    ///   - tag: Boolean value which indicates if the COSE message will have a CBOR tag.
+    ///   - encrypt: Boolean which activates or deactivates the payload protection.
+    /// - Returns: A CBOR-encoded COSE Encrypt0 message.
+    public func encode(tag: Bool = true, encrypt: Bool = true) throws -> Data {
         var message: [CBOR] = []
 
-        if phdr.isEmpty {
-            message.append(CBOR.byteString(Data()))
+        if encrypt {
+            let encrypted = try self.encrypt()
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                encrypted.toCBOR]
         } else {
-            message.append(CBOR.map(phdr.mapKeysToCbor()))
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null]
         }
+        
+        let result = try super.encode(message: message, tag: tag)
+        
+        return result
+    }
+    
+    // Custom description for the object
+    public override var description: String {
+        let (phdr, uhdr) = hdrRepr()
 
-        if uhdr.isEmpty {
-            message.append(CBOR.byteString(Data()))
-        } else {
-            message.append(CBOR.map(uhdr.mapKeysToCbor()))
-        }
-
-        message.append(payload != nil ? CBOR.byteString(payload!) : CBOR.null)
-
-        if tag {
-            return try CBORSerialization.data(from: .taggedValue(CBOR.Tag(tag: cborTag, value: .array(message))))
-        } else {
-            return try CBORSerialization.data(from: .array(message))
-        }
+        return "<COSE_Encrypt0: [\(phdr), \(uhdr), \(truncate((self.payload?.base64EncodedString())!))]>"
     }
 }

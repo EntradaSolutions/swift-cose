@@ -3,77 +3,150 @@ import PotentCBOR
 
 /// COSE MACed Message with Recipients
 public class MacMessage: MacCommon {
-    
     // MARK: - Properties
-    public var tag: Data = Data()
+    public override var context: String { "MAC" }
+    public override var cborTag: Int { 97 }
     public var recipients: [CoseRecipient] = []
-    
-    public override var cborTag: Int {
-        return 97
-    }
     
     // MARK: - Initialization
     public init(phdr: [String: CoseHeaderAttribute]? = nil,
                 uhdr: [String: CoseHeaderAttribute]? = nil,
-                payload: Data? = nil,
+                payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseKey? = nil,
-                recipients: [CoseRecipient] = []) throws {
-        try super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
+                key: CoseSymmetricKey? = nil,
+                recipients: [CoseRecipient] = []) {
+        super.init(phdr: phdr,
+                   uhdr: uhdr,
+                   payload: payload,
+                   externalAAD: externalAAD,
+                   key: key)
         self.recipients = recipients
     }
     
     // MARK: - Methods
-    public override class func fromCoseObj(_ coseObj: [CBOR]) throws -> Self {
-        guard coseObj.count >= 4 else {
-            throw CoseError.invalidMessage("COSE MAC object is incomplete.")
+    public override class func fromCoseObject(coseObj: inout [Any]) throws -> MacMessage {
+        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? MacMessage else {
+            throw CoseError.invalidMessage("Failed to decode base EncMessage.")
         }
         
-        let phdr = try CoseHeader.decode(from: coseObj[0].dataValue)
-        let uhdr = try CoseHeader.decode(from: coseObj[1].dataValue)
-        let payload = coseObj[2].dataValue
-        let tag = coseObj[3].dataValue
-        
-        let recipients: [CoseRecipient] = try coseObj[safe: 4]?.arrayValue?.compactMap {
-            try CoseRecipient.fromCbor($0)
-        } ?? []
-        
-        let message = try self.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: Data())
-        message.tag = tag
-        message.recipients = recipients
-        return message
+        // Extract and assign the authentication tag
+        if !coseObj.isEmpty {
+            msg.authTag = (coseObj.removeFirst() as? Data)!
+        } else {
+            throw CoseError.valueError("Missing authentication tag in COSE object.")
+        }
+
+        // Attempt to decode recipients
+        do {
+            if let recipientArray = coseObj.first as? [Any] {
+                coseObj.removeFirst()
+                let recipients = try recipientArray.map {
+                    try CoseRecipient.createRecipient(from: $0, allowUnknownAttributes: true, context: "Mac_Recipient")
+                }
+                msg.recipients = recipients
+            } else {
+                msg.recipients = [] // No recipients present
+            }
+        } catch {
+            throw CoseError.valueError("Failed to decode recipients.")
+        }
+
+        return msg
     }
     
+    /// Encodes and protects the COSE_Mac message.
+    /// - Parameters:
+    ///   - tag: The boolean value which indicates if the COSE message will have a CBOR tag.
+    ///   - mac: The boolean value which activates or deactivates the MAC tag.
+    /// - Returns: The CBOR-encoded COSE Mac message.
     public func encode(tag: Bool = true, mac: Bool = true) throws -> Data {
-        var message: [CBOR] = [
-            phdrEncoded?.toCBOR ?? CBOR.null,
-            uhdrEncoded?.toCBOR ?? CBOR.null,
-            payload?.toCBOR ?? CBOR.null
-        ]
+        var message: [CBOR] = []
         
         if mac {
-            message.append(CBOR.data(self.computeTag()))
+            let computedTag = self.computeTag()
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null,
+                computedTag.toCBOR]
+        } else {
+            message = [
+                phdrEncoded.toCBOR,
+                CBOR.fromAny(uhdrEncoded),
+                payload?.toCBOR ?? CBOR.null]
         }
         
-        if !recipients.isEmpty {
-            let encodedRecipients = try recipients.map { try $0.encode() }
-            message.append(CBOR.array(encodedRecipients))
+        if !self.recipients.isEmpty {
+            guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
+                throw CoseError.invalidAlgorithm("Algorithm not found in headers")
+            }
+            
+            let recipientData = try recipients.map {
+                try $0
+                    .encode(
+                        targetAlg: alg
+                    ).toCBOR
+            }
+            message.append(CBOR.array(recipientData))
         }
         
-        return try super.encode(message: message, tag: tag)
+        let result = try super.encode(message: message, tag: tag)
+        
+        return result
     }
     
-    public func computeTag() -> Data {
-        // Replace with your tag computation logic.
-        return Data() // Placeholder for actual tag computation.
+    public override func computeTag() throws -> Data {
+        guard let targetAlgorithm = try? getAttr(Algorithm()) as? EncAlgorithm else {
+            fatalError("Algorithm not found in headers")
+        }
+
+        let recipientTypes = try! CoseRecipient.verifyRecipients(recipients)
+
+        if recipientTypes.contains(where: { $0 is DirectEncryption }) {
+            // Key should already be known
+            return try super.computeTag()
+        } else if recipientTypes.contains(where: { $0 is DirectKeyAgreement }) {
+            self.key = try! recipients.first?.computeCEK(targetAlgorithm: targetAlgorithm, ops: "encrypt")
+            return try super.computeTag()
+        } else if recipientTypes.contains(where: { $0 is KeyWrap }) || recipientTypes.contains(where: { $0 is KeyAgreementWithKeyWrap }) {
+            // Generate random key bytes
+            var keyBytes = Data(count: targetAlgorithm.keyLength!)
+            _ = keyBytes.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, keyBytes.count, $0.baseAddress!) }
+            
+            for recipient in recipients {
+                if recipient.payload?.isEmpty ?? true {
+                    recipient.payload = keyBytes
+                } else {
+                    keyBytes = recipient.payload!
+                }
+                if let recipient = recipient as? KeyAgreementWithKeyWrap {
+                    let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm)
+                } else if let recipient = recipient as? KeyWrap {
+                    let _ = try recipient.encrypt(targetAlg: targetAlgorithm)
+                } else {
+                    throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
+                }
+            }
+
+            self.key = try! CoseSymmetricKey(
+                k: keyBytes,
+                optionalParams: [
+                    KpAlg(): targetAlgorithm,
+                    KpKeyOps(): [MacCreateOp()]
+                ]
+            )
+            return try super.computeTag()
+        } else {
+            throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
+        }
     }
     
     public override var description: String {
-        let phdrDesc = phdrEncoded?.description ?? "nil"
-        let uhdrDesc = uhdrEncoded?.description ?? "nil"
-        let payloadDesc = payload?.base64EncodedString() ?? "nil"
-        let tagDesc = tag.base64EncodedString()
+        let (phdr, uhdr) = hdrRepr()
+        let payloadDescription = truncate((payload?.base64EncodedString())!)
         let recipientsDesc = recipients.map { $0.description }.joined(separator: ", ")
-        return "<COSE_Mac: [\(phdrDesc), \(uhdrDesc), \(payloadDesc), \(tagDesc), [\(recipientsDesc)]]>"
+        let authTagDescription = truncate((authTag.base64EncodedString()))
+        let recipientsDescription = recipients.map { $0.description }.joined(separator: ", ")
+        return "<COSE_Mac: [\(phdr), \(uhdr), \(payloadDescription), \(authTagDescription), [\(recipientsDescription)]]>"
     }
 }

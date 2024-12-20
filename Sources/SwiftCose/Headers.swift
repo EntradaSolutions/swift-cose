@@ -77,6 +77,10 @@ public class CoseHeaderAttribute: CoseAttribute {
     ) {
         super.init(identifier: identifier.rawValue, fullname: fullname, valueParser: valueParser)
     }
+
+//    required public init(from decoder: Decoder) throws {
+//        fatalError("init(from:) has not been implemented")
+//    }
     
     public static func fromId(for attribute: Any) throws -> CoseHeaderAttribute {
         switch attribute {
