@@ -53,7 +53,7 @@ public class X5T: Equatable {
         guard let algId = item[0], let thumbprint = item[1] else {
             fatalError("Invalid CBOR item format")
         }
-        let alg = try CoseAlgorithm.getInstance(
+        let alg = CoseAlgorithm.getInstance(
             for: CoseAlgorithmIdentifier(rawValue: algId.integerValue()!)!
         )
         return X5T(
@@ -126,7 +126,6 @@ public class X5Chain {
         // Extract KeyUsage extension
         guard let keyUsageExtension = try certChain.extensions.keyUsage else {
             throw CoseError.invalidCertificate("The X.509 certificate provided is not valid for the purpose is not valid for digitalSignature")
-           return false
         }
 
         // Check if `digitalSignature` is enabled

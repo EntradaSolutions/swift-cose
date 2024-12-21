@@ -322,7 +322,7 @@ public class RSAKey: CoseKey {
     
     // Custom description for the object
     public override var description: String {
-        var keyRepresentation = keyRepr()
+        let keyRepresentation = keyRepr()
 
         return "<COSE_Key(RSAKey): \(keyRepresentation)>"
     }

@@ -21,7 +21,7 @@ public class Es256: EcdsaAlgorithm {
     
     // Sign the data
     public override func sign(key: EC2Key, data: Data) throws -> Data? {
-        guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: key.d!) else {
+        guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: key.d) else {
             return nil
         }
 
@@ -32,14 +32,14 @@ public class Es256: EcdsaAlgorithm {
     // Verify the signature
     public override func verify(key: EC2Key, data: Data, signature: Data) throws -> Bool {
         // Ensure the x and y data lengths match the curve requirements
-        guard key.x!.count == 32 && key.y!.count == 32 else {
+        guard key.x.count == 32 && key.y.count == 32 else {
             throw CoseError.invalidKey("Invalid x or y length for P256 curve")
         }
         
         // Create x963Representation: a prefix of 0x04 followed by x and y concatenated
         var x963Representation = Data([0x04])
-        x963Representation.append(key.x!)
-        x963Representation.append(key.y!)
+        x963Representation.append(key.x)
+        x963Representation.append(key.y)
         
         guard let publicKey = try? P256.Signing.PublicKey(x963Representation: x963Representation) else {
             return false
@@ -67,7 +67,7 @@ public class Es384: EcdsaAlgorithm {
     
     // Sign the data
     public override func sign(key: EC2Key, data: Data) throws -> Data? {
-        guard let privateKey = try? P384.Signing.PrivateKey(rawRepresentation: key.d!) else {
+        guard let privateKey = try? P384.Signing.PrivateKey(rawRepresentation: key.d) else {
             return nil
         }
 
@@ -78,14 +78,14 @@ public class Es384: EcdsaAlgorithm {
     // Verify the signature
     public override func verify(key: EC2Key, data: Data, signature: Data) throws -> Bool {
         // Ensure the x and y data lengths match the curve requirements
-        guard key.x!.count == 32 && key.y!.count == 32 else {
+        guard key.x.count == 32 && key.y.count == 32 else {
             throw CoseError.invalidKey("Invalid x or y length for P256 curve")
         }
         
         // Create x963Representation: a prefix of 0x04 followed by x and y concatenated
         var x963Representation = Data([0x04])
-        x963Representation.append(key.x!)
-        x963Representation.append(key.y!)
+        x963Representation.append(key.x)
+        x963Representation.append(key.y)
         
         guard let publicKey = try? P384.Signing.PublicKey(x963Representation: x963Representation) else {
             return false
@@ -112,7 +112,7 @@ public class Es512: EcdsaAlgorithm {
     
     // Sign the data
     public override func sign(key: EC2Key, data: Data) throws -> Data? {
-        guard let privateKey = try? P521.Signing.PrivateKey(rawRepresentation: key.d!) else {
+        guard let privateKey = try? P521.Signing.PrivateKey(rawRepresentation: key.d) else {
             return nil
         }
 
@@ -123,14 +123,14 @@ public class Es512: EcdsaAlgorithm {
     // Verify the signature
     public override func verify(key: EC2Key, data: Data, signature: Data) throws -> Bool {
         // Ensure the x and y data lengths match the curve requirements
-        guard key.x!.count == 32 && key.y!.count == 32 else {
+        guard key.x.count == 32 && key.y.count == 32 else {
             throw CoseError.invalidKey("Invalid x or y length for P256 curve")
         }
         
         // Create x963Representation: a prefix of 0x04 followed by x and y concatenated
         var x963Representation = Data([0x04])
-        x963Representation.append(key.x!)
-        x963Representation.append(key.y!)
+        x963Representation.append(key.x)
+        x963Representation.append(key.y)
         
         guard let publicKey = try? P521.Signing.PublicKey(x963Representation: x963Representation) else {
             return false

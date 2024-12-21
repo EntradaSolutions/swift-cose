@@ -67,6 +67,18 @@ extension Data {
         return data
     }
     
+    static func randomBytes(count: Int) -> Data {
+        var data = Data(count: count)
+        let result = data.withUnsafeMutableBytes {
+            SecRandomCopyBytes(kSecRandomDefault, count, $0.baseAddress!)
+        }
+        if result == errSecSuccess {
+            return data
+        } else {
+            return Data()
+        }
+    }
+    
     init?(hexString: String) {
         let length = hexString.count / 2
         var data = Data(capacity: length)

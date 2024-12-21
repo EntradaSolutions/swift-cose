@@ -12,7 +12,6 @@ public class EncMessage: EncCommon {
             return _recipients
         }
         set {
-            _recipients = []
             for recipient in newValue {
                 _recipients.append(recipient)
             }
@@ -31,12 +30,12 @@ public class EncMessage: EncCommon {
     ///   - key: The Symmetric COSE key for encryption/decryption of the message
     ///   - recipients: An optional list of `CoseRecipient` objects.
     /// - Returns: A COSE Encrypt0 message object.
-    public init(phdr: [String: CoseHeaderAttribute]? = nil,
-                         uhdr: [String: CoseHeaderAttribute]? = nil,
-                         payload: Data = Data(),
-                         externalAAD: Data = Data(),
-                         key: CoseSymmetricKey? = nil,
-                         recipients: [CoseRecipient]? = nil) {
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
+                 payload: Data = Data(),
+                 externalAAD: Data = Data(),
+                 key: CoseSymmetricKey? = nil,
+                 recipients: [CoseRecipient]? = nil) {
         super.init(phdr: phdr,
                    uhdr: uhdr,
                    payload: payload,
@@ -49,7 +48,7 @@ public class EncMessage: EncCommon {
     /// Function to decode a COSE_Encrypt message
     /// - Parameter coseObj: The array to decode.
     /// - Returns: The decoded Enc0Message.
-    public override class func fromCoseObject(coseObj: inout [Any]) throws -> EncMessage {
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> EncMessage {
         // Decode base message using the superclass method
         guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? EncMessage else {
             throw CoseError.invalidMessage("Failed to decode base EncMessage.")
@@ -57,12 +56,24 @@ public class EncMessage: EncCommon {
         
         do {
             // Attempt to parse recipients from the first element of coseObj
-            if let recipientArray = coseObj.first as? [Any] {
+            if let recipientArray = coseObj.first?.arrayValue {
                 coseObj.removeFirst()
-                let recipients = try recipientArray.map {
-                    try CoseRecipient.createRecipient(from: $0, allowUnknownAttributes: true, context: "Enc_Recipient")
+                for recipient in recipientArray {
+                    guard let recipient = recipient.arrayValue else {
+                        throw CoseError.valueError("Invalid recipient")
+                    }
+                    guard recipient.count == 3 else {
+                        throw CoseError.valueError("Invalid recipient")
+                    }
+                    try msg.recipients
+                        .append(
+                            CoseRecipient
+                                .createRecipient(
+                                    recipient: recipient,
+                                    context: "Enc_Recipient"
+                                )
+                        )
                 }
-                msg.recipients = recipients
             } else {
                 msg.recipients = [] // If no recipients found, assign an empty array
             }
@@ -96,15 +107,12 @@ public class EncMessage: EncCommon {
         }
         
         if !self.recipients.isEmpty {
-            guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
+            guard try getAttr(Algorithm()) is CoseAlgorithm else {
                 throw CoseError.invalidAlgorithm("Algorithm not found in headers")
             }
             
             let recipientData = try recipients.map {
-                try $0
-                    .encode(
-                        targetAlg: alg
-                    ).toCBOR
+                try $0.encode(message: message).toCBOR
             }
             message.append(CBOR.array(recipientData))
         }
@@ -122,15 +130,14 @@ public class EncMessage: EncCommon {
         
         let recipientTypes = try CoseRecipient.verifyRecipients(recipients)
         
-        if recipientTypes.contains(DirectEncryption.self) {
+        if recipientTypes.contains(describe(DirectEncryption.self)) {
             return try super.encrypt()
-        } else if recipientTypes.contains(DirectKeyAgreement.self) {
+        } else if recipientTypes.contains(describe(DirectKeyAgreement.self)) {
             self.key = try recipients.first?
                 .computeCEK(targetAlgorithm: targetAlgorithm, ops: "encrypt")
             return try super.encrypt()
-        } else if recipientTypes.contains(KeyWrap.self) || recipientTypes.contains(KeyAgreementWithKeyWrap.self) {
-            var keyBytes = Data(count: targetAlgorithm.keyLength!)
-            _ = keyBytes.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, keyBytes.count, $0.baseAddress!) }
+        } else if recipientTypes.contains(describe(KeyWrap.self)) || recipientTypes.contains(describe(KeyAgreementWithKeyWrap.self)) {
+            var keyBytes = Data.randomBytes(count: targetAlgorithm.keyLength!)
             
             for recipient in recipients {
                 if ((recipient.payload?.isEmpty) != nil) {
@@ -141,7 +148,9 @@ public class EncMessage: EncCommon {
                 if let recipient = recipient as? KeyAgreementWithKeyWrap {
                     let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm)
                 } else if let recipient = recipient as? KeyWrap {
-                    let _ = try recipient.encrypt(targetAlg: targetAlgorithm)
+                    let _ = try recipient.encrypt(
+                        targetAlgorithm: targetAlgorithm
+                    )
                 } else {
                     throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
                 }
@@ -171,9 +180,9 @@ public class EncMessage: EncCommon {
         
         let recipientTypes = try CoseRecipient.verifyRecipients(recipients)
         
-        if recipientTypes.contains(DirectEncryption.self) {
+        if recipientTypes.contains(describe(DirectEncryption.self)) {
             return try super.decrypt()
-        } else if recipientTypes.contains(DirectKeyAgreement.self) || recipientTypes.contains(KeyWrap.self) || recipientTypes.contains(KeyAgreementWithKeyWrap.self) {
+        } else if recipientTypes.contains(describe(DirectKeyAgreement.self)) || recipientTypes.contains(describe(KeyWrap.self)) || recipientTypes.contains(describe(KeyAgreementWithKeyWrap.self)) {
             self.key = try recipient
                 .computeCEK(targetAlgorithm: targetAlgorithm, ops: "decrypt")
             return try super.decrypt()

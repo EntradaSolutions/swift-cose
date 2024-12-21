@@ -9,17 +9,17 @@ public class CoseBase {
     public var algTstrEncoding: Bool = false
 
     /// The protected header, stored as a dictionary of attributes.
-    private var _phdr: [AnyHashable: CoseHeaderAttribute] = [:]
+    private var _phdr: [CoseHeaderAttribute: Any] = [:]
     
     /// The encoded version of the protected header.
     private var _phdrEncoded: Data? = nil
     
     /// The unprotected header, stored as a dictionary of attributes.
-    private var _uhdr: [AnyHashable: CoseHeaderAttribute] = [:]
+    private var _uhdr: [CoseHeaderAttribute: Any] = [:]
     private var _localAttrs: [CoseHeaderAttribute: Any] = [:]
     
     // MARK: - Protected Header (phdr)
-    public var phdr: [AnyHashable: CoseHeaderAttribute] {
+    public var phdr: [CoseHeaderAttribute: Any] {
         get {
             return _phdr
         }
@@ -30,7 +30,7 @@ public class CoseBase {
     }
     
     // MARK: - Unprotected Header (uhdr)
-    public var uhdr: [AnyHashable: CoseHeaderAttribute] {
+    public var uhdr: [CoseHeaderAttribute: Any] {
         get {
             return _uhdr
         }
@@ -50,6 +50,7 @@ public class CoseBase {
             }
         }
     }
+    
     // MARK: - Encoded Protected Header (phdrEncoded)
 
     /// Encodes the protected header as CBOR.
@@ -68,10 +69,21 @@ public class CoseBase {
                 // Convert `_phdr` to a CBOR.Map by mapping its keys and values
                 let protectedHdrMap: OrderedDictionary<CBOR, CBOR> = OrderedDictionary(
                     uniqueKeysWithValues: try _phdr.compactMap {
-                        if let key = $0.key as? Int {
-                            return (CBOR.unsignedInt(UInt64(key)), CBOR.unsignedInt(UInt64($0.value.identifier)))
-                        } else if let key = $0.key as? String {
-                            return (CBOR.utf8String(key), CBOR.unsignedInt(UInt64($0.value.identifier)))
+                        if let v = $0.value as? Int {
+                            return (
+                                CBOR.unsignedInt(UInt64($0.key.identifier)),
+                                CBOR.unsignedInt(UInt64(exactly: v)!)
+                            )
+                        } else if let v = $0.value as? String {
+                            return (
+                                CBOR.unsignedInt(UInt64($0.key.identifier)),
+                                CBOR.utf8String(v)
+                            )
+                        } else if let v = $0.value as? Data {
+                            return (
+                                CBOR.unsignedInt(UInt64($0.key.identifier)),
+                                CBOR.byteString(v)
+                            )
                         } else {
                             throw CoseError.valueError("Invalid key-value pair in `protected`: key=\($0.key), value=\($0.value)")
                         }
@@ -92,7 +104,7 @@ public class CoseBase {
     /// Encodes the unprotected header.
     ///
     /// - Returns: The encoded unprotected header as a dictionary.
-    public var uhdrEncoded: [AnyHashable: CoseHeaderAttribute] {
+    public var uhdrEncoded: [CoseHeaderAttribute: Any] {
         return _uhdr
     }
 
@@ -102,7 +114,7 @@ public class CoseBase {
     /// Resets the encoded version to ensure consistency.
     ///
     /// - Parameter params: The attributes to add to the protected header.
-    public func updateProtectedHeader(with params: [AnyHashable: CoseHeaderAttribute]) {
+    public func updateProtectedHeader(with params: [CoseHeaderAttribute: Any]) {
         params.forEach { _phdr[$0.key] = $0.value }
         _phdrEncoded = nil // Reset encoded value to trigger re-encoding.
     }
@@ -110,7 +122,7 @@ public class CoseBase {
     /// Updates the unprotected header with new attributes.
     ///
     /// - Parameter params: The attributes to add to the unprotected header.
-    public func updateUnprotectedHeader(with params: [AnyHashable: CoseHeaderAttribute]) {
+    public func updateUnprotectedHeader(with params: [CoseHeaderAttribute: Any]) {
         params.forEach { _uhdr[$0.key] = $0.value }
     }
 
@@ -121,7 +133,7 @@ public class CoseBase {
     /// - Parameters:
     ///   - phdr: The initial protected header (optional).
     ///   - uhdr: The initial unprotected header (optional).
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil, uhdr: [AnyHashable: CoseHeaderAttribute]? = nil) {
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil, uhdr: [CoseHeaderAttribute: Any]? = nil) {
         if let phdr = phdr {
             self._phdr = phdr
         }
@@ -131,7 +143,7 @@ public class CoseBase {
     }
     
     // MARK: - Initialization
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil, uhdr: [AnyHashable: CoseHeaderAttribute]? = nil, payload: Data? = nil, phdrEncoded: Data? = nil, algTstrEncoding: Bool? = false) throws {
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil, uhdr: [CoseHeaderAttribute: Any]? = nil, payload: Data? = nil, phdrEncoded: Data? = nil, algTstrEncoding: Bool? = false) throws {
         if phdr != nil && phdrEncoded != nil {
             throw CoseError.valueError("Cannot have both phdr and phdrEncoded")
         }
@@ -145,9 +157,8 @@ public class CoseBase {
                 if let map = phdrCBOR.mapValue {
                     map
                         .forEach {
-                            (key, value) in self._phdr[key.utf8StringValue!] = (
-                                value.unwrapped as! CoseHeaderAttribute
-                            )
+                            (key, value) in self._phdr[key.unwrapped as! CoseHeaderAttribute] = value.unwrapped
+                            
                         }
                 }
             }
@@ -156,7 +167,7 @@ public class CoseBase {
             self._phdr = [:]
         }
 
-        self._uhdr = uhdr ?? [:]
+        self._uhdr = uhdr ?? [:] as! [CoseHeaderAttribute : Any]
         self.algTstrEncoding = algTstrEncoding ?? false
         
         self._phdrEncoded = phdrEncoded
@@ -168,17 +179,17 @@ public class CoseBase {
     }
 
     // MARK: - Methods
-    public class func fromCoseObject(coseObj: inout [Any]) throws -> CoseBase {
+    public class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseBase {
         guard coseObj.count >= 2 else {
             throw CoseError.valueError("Insufficient elements in coseObj to construct a CoseBase")
         }
         
-        let phdrEncoded = coseObj.removeFirst() as? Data
-        let uhdr = coseObj.removeFirst() as? [String: CoseHeaderAttribute]
+        let phdrEncoded = coseObj.removeFirst()
+        let uhdr = coseObj.removeFirst()
 
         return try CoseBase(
-            uhdr: uhdr,
-            phdrEncoded: phdrEncoded
+            uhdr: uhdr.unwrapped as? [CoseHeaderAttribute: Any],
+            phdrEncoded: phdrEncoded.bytesStringValue
         )
     }
     
@@ -189,10 +200,10 @@ public class CoseBase {
     /// - Returns: If found returns a header attribute else 'None' or the default value.
     /// - Throws: `CoseError` When the same attribute is found in both the protected and unprotected header.
     public func getAttr(_ attribute: CoseHeaderAttribute, defaultResult: Any? = nil) throws -> Any? {
-        let pAttr = phdr[attribute.fullname]
-        let uAttr = uhdr[attribute.fullname]
+        let pAttr = phdr[attribute]
+        let uAttr = uhdr[attribute]
 
-        if let p = pAttr, let u = uAttr, p != u {
+        if pAttr == nil && uAttr == nil {
             throw CoseError.invalidHeader("MALFORMED: different values for the same header parameters in the header buckets")
         }
 
@@ -203,7 +214,7 @@ public class CoseBase {
     /// Resets the encoded version to ensure consistency.
     ///
     /// - Parameter params: The attributes to add to the protected header.
-    public func phdrUpdate(_ params: [AnyHashable: CoseHeaderAttribute]) {
+    public func phdrUpdate(_ params: [CoseHeaderAttribute: Any]) {
         params.forEach { _phdr[$0.key] = $0.value }
         _phdrEncoded = nil
     }
@@ -211,47 +222,50 @@ public class CoseBase {
     /// Updates the unprotected header with new attributes.
     ///
     /// - Parameter params: The attributes to add to the unprotected header.
-    public func uhdrUpdate(_ params: [AnyHashable: CoseHeaderAttribute]) {
+    public func uhdrUpdate(_ params: [CoseHeaderAttribute: Any]) {
         params.forEach { _uhdr[$0.key] = $0.value }
     }
 
     // MARK: - Helper Methods
-    private func parseHeader(_ header: [AnyHashable: Any], allowUnknownAttributes: Bool) throws -> [String: CoseHeaderAttribute?] {
-        var decodedHeader: [String: CoseHeaderAttribute?] = [:]
-
-        try header.forEach { key, value in
-            let attribute = CoseHeaderAttribute.getInstance(
-                for: CoseHeaderIdentifier(rawValue: key as! Int)!)
+    public class func parseHeader(hdr: [AnyHashable: Any]) throws -> [CoseHeaderAttribute: Any] {
+        var decodedHdr: [CoseHeaderAttribute: Any] = [:]
+        
+        for (key, value) in hdr {
+            guard let attr = try? CoseHeaderAttribute.fromId(for: key) else {
+                throw CoseError.invalidHeader("Invalid header attribute")
+            }
             
-            decodedHeader[attribute.fullname] = try attribute.valueParser?(
-                    value
-            ) as? CoseHeaderAttribute ?? value as! CoseHeaderAttribute
+            if let valueParser = attr.valueParser {
+                decodedHdr[attr] = try valueParser(value)
+            } else {
+                decodedHdr[attr] = value
+            }
         }
-
-        return decodedHeader
+        
+        return decodedHdr
     }
     
     public func hdrRepr() -> (phdr: [AnyHashable: Any], uhdr: [AnyHashable: Any]) {
         var phdr: [String: Any] = _phdr.reduce(into: [:]) { result, element in
-            var keyName: String
+            let keyName: String = element.key.fullname
             
-            if let coseAttribute = element.key as? CoseAttribute {
-                keyName = coseAttribute.fullname
-            } else {
-                keyName = "\(type(of: element.key))"
-            }
+//            if let coseAttribute = element.key,  {
+//                keyName = coseAttribute.fullname
+//            } else {
+//                keyName = "\(type(of: element.key))"
+//            }
             
             result[keyName] = "\(type(of: element.value))"
         }
 
         var uhdr: [String: Any] = _uhdr.reduce(into: [:]) { result, element in
-            var keyName: String
+            let keyName: String = element.key.fullname
             
-            if let coseAttribute = element.key as? CoseAttribute {
-                keyName = coseAttribute.fullname
-            } else {
-                keyName = "\(type(of: element.key))"
-            }
+//            if let coseAttribute = element.key {
+//                keyName = coseAttribute.fullname
+//            } else {
+//                keyName = "\(type(of: element.key))"
+//            }
             
             result[keyName] = "\(type(of: element.value))"
         }

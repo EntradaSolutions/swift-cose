@@ -410,13 +410,13 @@ public class EdDSA: CoseAlgorithm {
     public class func sign(key: OKPKey, data: Data) throws -> Data {
         switch key.curve.fullname {
         case "ED25519":
-            guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d!) else {
+                guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d) else {
                 throw CoseError.invalidKey("Invalid private key")
             }
             return try privateKey.signature(for: data)
             
         case "ED448":
-            guard let privateKey = try? Curve448.Signing.PrivateKey(rawRepresentation: key.d!) else {
+                guard let privateKey = try? Curve448.Signing.PrivateKey(rawRepresentation: key.d) else {
                 throw CoseError.invalidKey("Invalid private key")
             }
             return try privateKey.signature(for: data)

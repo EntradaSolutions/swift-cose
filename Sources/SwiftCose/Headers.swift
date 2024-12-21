@@ -1,8 +1,8 @@
 import Foundation
 
 public struct Headers {
-    public var protected: Dictionary<String, Any>
-    public var unprotected: Dictionary<String, Any>
+    public var protected: Data?
+    public var unprotected: Dictionary<AnyHashable, Any>
 }
 
 public enum CoseHeaderIdentifier: Int, Codable {

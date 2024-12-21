@@ -3,6 +3,10 @@ import CryptoSwift
 import OrderedCollections
 import PotentCodables
 
+public func describe(_ value: Any) -> String {
+    return String(describing: value)
+}
+
 /// Helper function to truncate a string to a maximum length
 /// - Parameters:
 ///   - input: The input string
@@ -24,7 +28,7 @@ func toBstr(_ dec: BigUInteger) -> Data {
     let byteLength = (dec.bitWidth + 7) / 8
     
     // Convert the BigUInteger to big-endian bytes
-    var value = dec
+    let value = dec
     var data = Data(count: byteLength)
     for i in 0..<byteLength {
         let byte = UInt8((value >> ((byteLength - i - 1) * 8)) & 0xFF)

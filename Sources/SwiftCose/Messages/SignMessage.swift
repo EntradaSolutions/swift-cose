@@ -2,28 +2,38 @@ import Foundation
 import PotentCBOR
 
 /// Abstract class representing a COSE Sign Message.
-public class SignMessage: CoseMessage {
+public class CoseSignMessage: CoseMessage {
+    
+    // MARK: - Abstract Properties
+    public var context: String {
+        fatalError("Subclasses must implement the 'context' property")
+    }
     
     // MARK: - Properties
-    public var context: String {
-        return "Signature"
-    }
-    public override var cborTag: Int {
-        return 98 // CBOR tag for SignMessage
-    }
     
-    public var signers: [CoseSignature] = []
+    /// The signers of the message.
+    public var signers: [CoseSignature] {
+        get {
+            return _signers
+        }
+        set {
+            for signer in newValue {
+                signer.parent = self
+            }
+            _signers = newValue
+        }
+    }
+    private var _signers: [CoseSignature] = []
     
     // MARK: - Initialization
     public init(
-        phdr: [String: CoseHeaderAttribute]? = nil,
-        uhdr: [String: CoseHeaderAttribute]? = nil,
+        phdr: [CoseHeaderAttribute: Any]? = nil,
+        uhdr: [CoseHeaderAttribute: Any]? = nil,
         payload: Data? = nil,
         signers: [CoseSignature] = []
-    ) throws {
-        try super.init(phdr: phdr, uhdr: uhdr, payload: payload)
+    ) {
+        super.init(phdr: phdr, uhdr: uhdr, payload: payload)
         self.signers = signers
-        self.signers.forEach { $0.parent = self }
     }
     
     // MARK: - Methods
@@ -32,22 +42,27 @@ public class SignMessage: CoseMessage {
     ///   - coseObj: The CBOR object to decode.
     ///   - allowUnknownAttributes: Whether to allow unknown attributes.
     /// - Returns: The decoded SignMessage.
-    public class func fromCoseObj(_ coseObj: [CBOR], allowUnknownAttributes: Bool = false) throws -> SignMessage {
-        guard let payload = coseObj.first?.dataValue else {
-            throw CoseError.invalidMessage("Invalid COSE object.")
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseSignMessage {
+        // Attempt to decode the base class message
+        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? CoseSignMessage else {
+            throw CoseError.invalidMessage("Failed to decode base CoseSignMessage.")
+        }
+
+        var signers: [CoseSignature] = []
+        
+        // Pop the signature from the COSE object
+        guard let signerArray = coseObj.first?.arrayValue  else {
+            throw CoseError.invalidMessage("Missing or invalid signers.")
         }
         
-        var remainingCoseObj = coseObj
-        remainingCoseObj.removeFirst() // Remove payload
-        
-        var signers: [CoseSignature] = []
-        if let signerArray = remainingCoseObj.first?.arrayValue {
-            signers = try signerArray.map { signerCbor in
-                try CoseSignature.fromCoseObj([signerCbor], allowUnknownAttributes: allowUnknownAttributes)
+        for signerCbor in signerArray {
+            if var signerCborArray = signerCbor.arrayValue {
+                signers.append(try CoseSignature.fromCoseObject(coseObj: &signerCborArray))
             }
         }
         
-        return try SignMessage(phdr: nil, uhdr: nil, payload: payload.toData, signers: signers)
+        msg.signers = signers
+        return msg
     }
     
     /// Encodes the message to CBOR.
@@ -56,29 +71,43 @@ public class SignMessage: CoseMessage {
     ///   - detachedPayload: An optional detached payload.
     /// - Returns: The encoded message as Data.
     public func encode(tag: Bool = true, detachedPayload: Data? = nil) throws -> Data {
-        var message: [CBOR] = []
-        message.append(phdrEncoded?.toCBOR ?? Data().toCBOR)
-        message.append(uhdrEncoded?.toCBOR ?? Data().toCBOR)
-        message.append(payload?.toCBOR ?? CBOR.null)
+        var cborMessage: [CBOR] = []
+        cborMessage.append(phdrEncoded.toCBOR)
+        cborMessage.append(CBOR.fromAny(uhdrEncoded))
+        cborMessage.append(payload?.toCBOR ?? CBOR.null)
         
         if !signers.isEmpty {
-            let encodedSigners = try signers.map { try $0.encode(detachedPayload: detachedPayload) }
-            message.append(.array(encodedSigners))
+            let encodedSigners = try signers.map {
+                CBOR.array(try $0.encode(detachedPayload: detachedPayload))
+            }
+            cborMessage.append(CBOR.array(encodedSigners))
         }
         
         if tag {
-            return try CBORSerialization.data(from: .tagged(CBOR.Tag(rawValue: self.cborTag), .array(message)))
+            return try CBORSerialization.data(
+                from: CBOR
+                    .tagged(
+                        CBOR.Tag(rawValue: UInt64(cborTag)),
+                        CBOR.array(cborMessage)
+                    )
+            )
         } else {
-            return try CBORSerialization.data(from: .array(message))
+            return try CBORSerialization.data(from: .array(cborMessage))
         }
     }
     
     // MARK: - Description
-//    public var description: String {
-//        let phdrDescription = phdr?.description ?? "nil"
-//        let uhdrDescription = uhdr?.description ?? "nil"
-//        let payloadDescription = payload?.base64EncodedString() ?? "nil"
-//        let signersDescription = signers.map { $0.description }.joined(separator: ", ")
-//        return "<COSE_Sign: [\(phdrDescription), \(uhdrDescription), \(payloadDescription), [\(signersDescription)]]>"
-//    }
+    public override var description: String {
+        let (phdr, uhdr) = hdrRepr()
+        let payloadDescription = truncate((payload?.base64EncodedString())!)
+        let signersDescription = signers.map { $0.description }.joined(separator: ", ")
+        return "<COSE_Sign: [\(phdr), \(uhdr), \(payloadDescription), [\(signersDescription)]]>"
+    }
+}
+
+
+public class SignMessage: CoseSignMessage {
+    // MARK: - Properties
+    public override var context: String { "Signature" }
+    public override var cborTag: Int { 98 }
 }

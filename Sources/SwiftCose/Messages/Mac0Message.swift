@@ -8,8 +8,8 @@ public class Mac0Message: MacCommon {
     public override var cborTag: Int { 17 }
 
     // MARK: - Initialization
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
-                uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil,
@@ -23,17 +23,17 @@ public class Mac0Message: MacCommon {
     ///   - coseObj: The COSE object represented as a CBOR array.
     ///   - allowUnknownAttributes: Flag to allow unknown attributes.
     /// - Returns: A decoded Mac0Message instance.
-    public override class func fromCoseObject(coseObj: inout [Any]) throws -> Mac0Message {
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> Mac0Message {
         guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? Mac0Message else {
-            throw CoseError.invalidMessage("Failed to decode base EncMessage.")
+            throw CoseError.invalidMessage("Failed to decode base Mac0Message.")
         }
 
         // Pop the authTag from the COSE object
-        guard let authTagData = coseObj.first as? Data else {
+        guard let authTagData = coseObj.first else {
             throw CoseError.invalidMessage("Missing or invalid authTag.")
         }
         coseObj.removeFirst()
-        msg.authTag = authTagData
+        msg.authTag = authTagData.bytesStringValue!
         
         return msg
     }

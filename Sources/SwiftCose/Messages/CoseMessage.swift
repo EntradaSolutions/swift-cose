@@ -35,6 +35,11 @@ public enum CoseMessageIdentifier: Int, Codable, Equatable {
 /// Parent class of all COSE message types.
 public class CoseMessage: CoseBase, CustomStringConvertible {
     
+    // MARK: - Abstract Methods
+    public var cborTag: Int {
+        fatalError("cborTag must be implemented in subclasses.")
+    }
+    
     public var description: String {
         fatalError("Must be overridden in subclass.")
     }
@@ -90,11 +95,6 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
         }
     }
 
-    // MARK: - Abstract Methods
-    public var cborTag: Int {
-        fatalError("cborTag must be implemented in subclasses.")
-    }
-
     // MARK: - Initialization
 
     /// Initializes a new instance of the CoseMessage class.
@@ -105,8 +105,8 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     ///   - payload: The payload of the COSE message (optional).
     ///   - externalAAD: External AAD for the COSE message (default: empty data).
     ///   - key: Key associated with the COSE message (optional).
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
-                uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data? = nil,
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil) {
@@ -163,9 +163,9 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     /// Function to return an initialized COSE message object.
     /// - Parameter coseObj: The CBOR object to decode.
     /// - Returns: The decoded COSE message.
-    public override class func fromCoseObject(coseObj: inout [Any]) throws -> CoseMessage {
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseMessage {
         let msg = try super.fromCoseObject(coseObj: &coseObj) as! CoseMessage
-        msg.payload = coseObj.removeLast() as? Data
+        msg.payload = coseObj.removeLast().bytesStringValue
         return msg
     }
     
@@ -191,7 +191,7 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
             throw CoseError.valueError("Decode accepts only bytes as input.")
         }
         
-        if var messageType = cborObj?.unwrapped as? [Any] {
+        if var messageType = cborObj?.arrayValue {
             do {
                 let decoded = try T.fromCoseObject(
                     coseObj: &messageType

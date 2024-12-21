@@ -1,113 +1,160 @@
 import Foundation
+import PotentCBOR
 
 public class DirectKeyAgreement: CoseRecipient {
+    
+    // MARK: - Properties
+    public override var context: String {
+        get { return _context }
+        set { _context = newValue }
+    }
+    private var _context: String = ""
 
-    // Class method to create an instance from a COSE object
-    public override class func createRecipient(from coseObj: [CBOR], allowUnknownAttributes: Bool, context: String) throws -> DirectKeyAgreement {
-        let msg = try super.createRecipient(from: coseObj, allowUnknownAttributes: allowUnknownAttributes, context: context) as! DirectKeyAgreement
-        let alg = msg.getAttr(for: .algorithm)
-
-        if [EcdhEsHKDF256.self, EcdhEsHKDF512.self].contains(where: { $0 == type(of: alg) }),
-           msg.getAttr(for: .ephemeralKey) == nil {
-            throw CoseError.malformedMessage("Recipient must carry an ephemeral COSE key object.")
+    // MARK: - Methods
+    public override class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> DirectKeyAgreement {
+        
+        let msg = try super.fromCoseObject(
+            coseObj: &coseObj
+        ) as! DirectKeyAgreement
+        
+        // Set context if provided
+        if let ctx = context {
+            msg.context = ctx
         }
-
-        if !msg.recipients.isEmpty {
-            throw CoseError.malformedMessage("Recipient cannot carry additional recipients.")
+        
+        // Validate algorithm and protected header
+        guard let alg = try msg.getAttr(Algorithm()) as? CoseAlgorithm else {
+            throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
         }
-
+        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_HKDF_256, .ecdhES_HKDF_512]
+        let ephermalKey = try msg.getAttr(EphemeralKey())
+        if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
+            throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
+        }
+        
+        // Ensure there are no recipients
+        guard msg.recipients.isEmpty else {
+            throw CoseError.malformedMessage("Recipient class \(type(of: self)) cannot carry more recipients.")
+        }
+        
         return msg
     }
 
-    // Context property
-    private var _context: String = ""
-    public var context: String {
-        get { _context }
-        set { _context = newValue }
-    }
-
     // Encoding logic
-    public override func encode(targetAlg: CoseAlgorithm) throws -> [CBOR] {
-        guard let alg = getAttr(for: .algorithm) else {
-            throw CoseError.malformedMessage("The algorithm parameter should be included in either the protected or unprotected header.")
+    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+        guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
+            throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
+        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
 
         // Static receiver key
-        guard let peerKey = localAttributes[.staticKey] as? EC2Key else {
+        guard let peerKey = localAttrs[StaticKey()] as? EC2Key else {
             throw CoseError.invalidKey("Static receiver key cannot be nil. It should be configured in 'localAttributes' of the message.")
         }
+        
+        let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_HKDF_256, .ecdhES_HKDF_512]
+        let ephermalKey = try getAttr(EphemeralKey())
 
         // Ephemeral key generation
         if key == nil {
-            if [EcdhEsHKDF256.self, EcdhEsHKDF512.self].contains(where: { $0 == type(of: alg) }) {
+            if needsEphemeralKey.contains(algId!) {
                 try setupEphemeralKey(peerKey: peerKey)
             } else {
                 throw CoseError.invalidKey("Static sender key cannot be nil.")
             }
         }
-
-        if recipients.count > 1 {
-            throw CoseError.malformedMessage("DIRECT_KEY_AGREEMENT cannot carry additional recipients.")
+        
+        if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
+            throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }
-
-        if getAttr(for: .ephemeralKey) == nil,
-           [EcdhEsHKDF256.self, EcdhEsHKDF512.self].contains(where: { $0 == type(of: alg) }) {
-            throw CoseError.malformedMessage("DIRECT_KEY_AGREEMENT must carry an ephemeral COSE key object.")
-        }
-
-        var encoded: [CBOR] = []
-        encoded.append(phdrEncoded?.toCBOR ?? CBOR.null)
-        encoded.append(uhdrEncoded?.toCBOR ?? CBOR.null)
-        encoded.append(CBOR.byteString(payload))
+        
+        var recipient: [Any] = [
+            phdrEncoded,
+            uhdrEncoded,
+            Data()
+        ]
 
         if !recipients.isEmpty {
             let encodedRecipients = try recipients.map { try $0.encode() }
-            encoded.append(CBOR.array(encodedRecipients))
+            recipient.append(encodedRecipients)
         }
 
-        return encoded
+        return recipient
     }
-
+    
     // Compute KEK logic
-    private func computeKek(targetAlg: CoseAlgorithm, peerKey: EC2Key, localKey: EC2Key, kexAlg: CoseAlgorithm) throws -> Data {
-        guard let derivedKey = kexAlg.deriveKek(crv: peerKey.crv, localKey: localKey, peerKey: peerKey, context: try getKdfContext(targetAlg)) else {
-            throw CoseError.keyDerivationFailed("Failed to derive KEK.")
-        }
-        return derivedKey
+    private func computeKEK(targetAlgorithm: EncAlgorithm, peerKey: EC2Key, localKey: EC2Key, kexAlg: EcdhHkdfAlgorithm) throws -> Data {
+        return try kexAlg
+            .deriveKEK(
+                curve: peerKey.curve,
+                privateKey: localKey,
+                publicKey: peerKey,
+                context: try getKDFContext(algorithm: targetAlgorithm)
+            )
     }
 
     // Compute CEK logic
-    public override func computeCEK(targetAlgorithm: CoseAlgorithm) throws -> Data {
-        guard let alg = getAttr(for: .algorithm) else {
-            throw CoseError.unsupportedAlgorithm("Unsupported algorithm for \(type(of: self)).")
+    public override func computeCEK(targetAlgorithm: EncAlgorithm, ops: String) throws -> CoseSymmetricKey? {
+        guard let alg = try getAttr(Algorithm()) as? EcdhHkdfAlgorithm else {
+            throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
+        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let supportedAlgorithms: [CoseAlgorithmIdentifier] = [
+            .ecdhES_HKDF_256,
+            .ecdhES_HKDF_512,
+            .ecdhSS_HKDF_512,
+            .ecdhSS_HKDF_512
+        ]
 
         let peerKey: EC2Key
-        if [EcdhSsHKDF256.self, EcdhSsHKDF512.self, EcdhEsHKDF256.self, EcdhEsHKDF512.self].contains(where: { $0 == type(of: alg) }) {
-            if let staticKey = localAttributes[.staticKey] as? EC2Key {
-                peerKey = staticKey
+        if supportedAlgorithms.contains(algId!) {
+            if ops == "encrypt" {
+                peerKey = localAttrs[StaticKey()] as! EC2Key
             } else {
-                throw CoseError.invalidKey("Unknown static receiver public key.")
+                let algs: [CoseAlgorithmIdentifier] = [
+                    .ecdhSS_HKDF_512,
+                    .ecdhSS_HKDF_512
+                ]
+                if algs.contains(algId!) {
+                    peerKey = try getAttr(StaticKey()) as! EC2Key
+                } else {
+                    peerKey = try getAttr(EphemeralKey()) as! EC2Key
+                }
             }
         } else {
-            throw CoseError.unsupportedAlgorithm("Unsupported algorithm for \(type(of: self)).")
+            throw CoseError.invalidAlgorithm("Algorithm \(alg.fullname) unsupported for \(type(of: self)).")
         }
 
-        try peerKey.verifyKey(type: EC2Key.self, algorithm: alg, operations: [.deriveKey, .deriveBits])
-        try key?.verifyKey(type: EC2Key.self, algorithm: alg, operations: [.deriveKey, .deriveBits])
+        try peerKey.verify(
+            keyType: EC2Key.self,
+            algorithm: alg,
+            keyOps: [DeriveKeyOp(), DeriveBitsOp()]
+        )
+        try key?.verify(
+            keyType: EC2Key.self,
+            algorithm: alg,
+            keyOps: [DeriveKeyOp(), DeriveBitsOp()]
+        )
 
-        return try computeKek(targetAlg: targetAlgorithm, peerKey: peerKey, localKey: key!, kexAlg: alg)
+        return try CoseSymmetricKey(
+            k: try computeKEK(
+                targetAlgorithm: targetAlgorithm,
+                peerKey: peerKey,
+                localKey: key as! EC2Key,
+                kexAlg: alg
+            ),
+            optionalParams: [KpAlg(): targetAlgorithm]
+        )
     }
 
     // String representation
     public override var description: String {
-        let phdrRepr = phdrEncoded?.description ?? "nil"
-        let uhdrRepr = uhdrEncoded?.description ?? "nil"
-        return "<COSE_Recipient: [\(phdrRepr), \(uhdrRepr), \(payload.count) bytes, \(recipients)]>"
-    }
-
-    // Ephemeral key setup (placeholder for actual implementation)
-    private func setupEphemeralKey(peerKey: EC2Key) throws {
-        // Ephemeral key generation logic here
+        let (phdr, uhdr) = hdrRepr()
+        let payloadDescription = truncate((payload?.base64EncodedString())!)
+        let recipientsDescription = recipients.map { $0.description }.joined(separator: ", ")
+        return "<COSE_Recipient: [\(phdr), \(uhdr), \(payloadDescription), \(recipientsDescription)]>"
     }
 }

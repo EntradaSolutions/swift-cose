@@ -182,7 +182,10 @@ public class EC2Key: CoseKey {
             let publicKeyData = Data(
                 [0x03]
             ) + x! // don't care which of the two possible Y values we get
-            let (publicKeyX, publicKeyY) = derivePublicNumbersCompact(from: publicKeyData, curve: curve.curveType!)
+            let (_, publicKeyY) = derivePublicNumbersCompact(
+                from: publicKeyData,
+                curve: curve.curveType!
+            )
             self.y = publicKeyY!
         }
         

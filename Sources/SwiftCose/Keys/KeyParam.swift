@@ -10,6 +10,25 @@ public enum KeyParamIdentifier: Int, Codable, Equatable {
     case keyOps = 4
     case baseIV = 5
     
+    /// Returns the appropriate `CoseKeyParam` subclass for the given fullname.
+    /// - Parameter fullname: The string fullname of the key parameter.
+    /// - Returns: An instance of the corresponding `CoseKeyParam` subclass if found, otherwise nil.
+    public static func fromFullName(_ fullName: String) -> KeyParamIdentifier? {
+        switch fullName.uppercased() {
+            case "KTY":
+                return .kty
+            case "KID":
+                return .kid
+            case "ALG":
+                return .alg
+            case "KEY_OPS":
+                return .keyOps
+            case "BASE_IV":
+                return .baseIV
+            default:
+                return nil
+        }
+    }
 }
 
 
@@ -24,6 +43,49 @@ public class KeyParam: CoseAttribute {
             fullname: fullname,
             valueParser: valueParser
         )
+    }
+    
+    /// Returns the specific KeyParam subclass for a given identifier.
+    /// - Parameter identifier: The identifier (Int or KeyParamIdentifier).
+    /// - Returns: An instance of the corresponding KeyParam subclass.
+    public static func fromId(for identifier: Any) throws -> KeyParam {
+        switch identifier {
+        case let id as Int:
+            guard let keyType = KeyParamIdentifier(rawValue: id) else {
+                throw CoseError.invalidKeyType("Unknown KeyParam identifier")
+            }
+            return getInstance(for: keyType)
+                
+        case let name as String:
+            // If the identifier is a String, attempt to match it to a KeyParamIdentifier
+            guard let type = KeyParamIdentifier.fromFullName(name) else {
+                throw CoseError.invalidKeyType("Unknown type fullname")
+            }
+            return getInstance(for: type)
+                
+        case let type as KeyParamIdentifier:
+            return getInstance(for: type)
+        default:
+            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+        }
+    }
+    
+    /// Maps the `KeyParamIdentifier` to its corresponding class type.
+    /// - Parameter identifier: The identifier to map.
+    /// - Returns: An instance of the corresponding subclass.
+    public static func getInstance(for identifier: KeyParamIdentifier) -> KeyParam {
+        switch identifier {
+        case .kty:
+            return KpKty()
+        case .kid:
+            return KpKid()
+        case .alg:
+            return KpAlg()
+        case .keyOps:
+            return KpKeyOps()
+        case .baseIV:
+            return KpBaseIV()
+        }
     }
 }
 
@@ -108,8 +170,6 @@ public enum EC2KeyParamIdentifier: Int, Codable, Equatable {
     
 // Base class for EC2 key parameters
 public class EC2KeyParam: CoseKeyParam {
-
-    public typealias Bound = EC2KeyParam
 
     public init(
         identifier: EC2KeyParamIdentifier,

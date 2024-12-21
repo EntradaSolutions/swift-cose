@@ -10,7 +10,7 @@ public enum Padding {
 }
 
 /// RSA signing and (key-wrap) encryption.
-public class Rsa: CoseAlgorithm {
+public class RsaAlgorithm: CoseAlgorithm {
     public var hashFunction: CoseHashFunction
     
     public var padding: Padding {
@@ -26,33 +26,51 @@ public class Rsa: CoseAlgorithm {
         super.init(identifier: identifier, fullname: fullname)
     }
     
-    public func sign(key: RSAKey, data: Data) throws -> _RSA.Signing.RSASignature {
+    public func sign(key: RSAKey, data: Data) throws -> Data {
         // Construct the private key
-        _ = try _RSA.Signing.PublicKey(n: key.n, e: key.e)
-        let privateKey =  try _RSA.Signing.PrivateKey(n: key.n, e: key.e, d: key.d, p: key.p, q: key.q)
+        _ = try _RSA.Signing.PublicKey(n: key.n!, e: key.e!)
+        let privateKey =  try _RSA.Signing.PrivateKey(
+            n: key.n!.toBytes,
+            e: key.e!.toBytes,
+            d: key.d?.toBytes ?? Data().toBytes,
+            p: key.p?.toData ?? Data(),
+            q: key.q?.toData ?? Data()
+        )
         
         // Sign the data
         switch padding {
             case .pkcs1v1_5:
-                return try privateKey.signature(for: data, padding: .insecurePKCS1v1_5)
+                return try privateKey
+                    .signature(
+                        for: data,
+                        padding: .insecurePKCS1v1_5
+                    ).rawRepresentation
             case .pss:
-                return try privateKey.signature(for: data, padding: .PSS)
+                return try privateKey.signature(for: data, padding: .PSS).rawRepresentation
             default:
                 throw CoseError.valueError("Unsupported padding")
         }
     }
         
-    public func verify(key: RSAKey, data: Data, signature: _RSA.Signing.RSASignature) -> Bool {
+    public func verify(key: RSAKey, data: Data, signature: Data)throws  -> Bool {
         do {
             // Construct the public key
-            let rsaPublicKey = try _RSA.Signing.PublicKey(n: key.n, e: key.e)
+            _ = _RSA.Signing.RSASignature(rawRepresentation: signature)
+            let rsaPublicKey = try _RSA.Signing.PublicKey(n: key.n!, e: key.e!)
             
             // Verify the signature
             switch padding {
                 case .pkcs1v1_5:
-                    return rsaPublicKey.isValidSignature(signature, for: data, padding: .insecurePKCS1v1_5)
+                    return rsaPublicKey.isValidSignature(
+                        _RSA.Signing.RSASignature(rawRepresentation: signature),
+                        for: data,
+                        padding: .insecurePKCS1v1_5
+                    )
                 case .pss:
-                    return rsaPublicKey.isValidSignature(signature, for: data, padding: .PSS)
+                    return rsaPublicKey.isValidSignature(
+                        _RSA.Signing.RSASignature(rawRepresentation: signature),
+                        for: data, padding: .PSS
+                    )
                 default:
                     throw CoseError.valueError("Unsupported padding")
             }
@@ -64,20 +82,20 @@ public class Rsa: CoseAlgorithm {
 }
 
 /// RSA with PSS padding
-public class RsaPss: Rsa {
+public class RsaPss: RsaAlgorithm {
     override public var padding: Padding {
         return .pss
     }
 }
 
 /// RSA with OAEP padding
-public class RsaOaep: Rsa {
+public class RsaOaep: RsaAlgorithm {
     override public var padding: Padding {
         return .pkcs1_oaep_sha256
     }
 
     func keyWrap(key: RSAKey, data: Data) throws -> Data {
-        let rsaPublicKey = try _RSA.Encryption.PublicKey(n: key.n, e: key.e)
+        let rsaPublicKey = try _RSA.Encryption.PublicKey(n: key.n!, e: key.e!)
         
         switch padding {
             case .pkcs1_oaep:
@@ -93,8 +111,14 @@ public class RsaOaep: Rsa {
 
     func keyUnwrap(key: RSAKey, data: Data) throws -> Data {
         // Construct the private key
-        _ = try _RSA.Encryption.PublicKey(n: key.n, e: key.e)
-        let privateKey =  try _RSA.Encryption.PrivateKey(n: key.n, e: key.e, d: key.d, p: key.p, q: key.q)
+        _ = try _RSA.Encryption.PublicKey(n: key.n!, e: key.e!)
+        let privateKey =  try _RSA.Encryption.PrivateKey(
+            n: key.n!.toBytes,
+            e: key.e!.toBytes,
+            d: key.d?.toBytes ?? Data().toBytes,
+            p: key.p?.toData ?? Data(),
+            q: key.q?.toData ?? Data()
+        )
         
         switch padding {
             case .pkcs1_oaep:
@@ -110,14 +134,14 @@ public class RsaOaep: Rsa {
 }
 
 /// RSA with PKCS#1 padding
-public class RsaPkcs1: Rsa {
+public class RsaPkcs1: RsaAlgorithm {
     override public var padding: Padding {
         return .pkcs1v1_5
     }
 }
 
 /// Base class for RSA OAEP algorithms
-public class RsaesOaep: Rsa {
+public class RsaesOaep: RsaAlgorithm {
     public override var padding: Padding {
         return .pkcs1_oaep
     }

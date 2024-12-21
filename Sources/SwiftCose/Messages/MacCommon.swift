@@ -18,7 +18,7 @@ public class MacCommon: CoseMessage {
     /// - Returns: A serialized CBOR representation of the mac structure.
     public var macStructure: Data {
         get throws {
-            guard let payload = self.payload else {
+            guard self.payload != nil else {
                 throw CoseError
                     .valueError("Payload cannot be empty for tag computation.")
             }
@@ -30,8 +30,8 @@ public class MacCommon: CoseMessage {
     }
 
     // MARK: - Initialization
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
-                uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil) {

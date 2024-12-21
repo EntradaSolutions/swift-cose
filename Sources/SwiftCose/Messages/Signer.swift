@@ -4,51 +4,51 @@ import PotentCBOR
 public class CoseSignature: SignCommon {
     
     // MARK: - Properties
-    public override var cborTag: Int {
-        return -1 // No specific CBOR tag for CoseSignature
-    }
+    public weak var parent: CoseSignMessage?
     
-    public override var signature: Data {
-        get { payload ?? Data() }
+    public override var signature: Data? {
+        get {
+            return _payload
+        }
         set {
-            guard !newValue.isEmpty else {
-                fatalError("Signature must be non-empty")
-            }
-            payload = newValue
+            _payload = newValue
         }
     }
-    
-    private weak var parent: CoseMessage?
+    private var _payload: Data?
     
     // MARK: - Initialization
-    public init(phdr: [String: CoseHeaderAttribute]? = nil,
-                uhdr: [String: CoseHeaderAttribute]? = nil,
-                signature: Data = Data(),
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
+                payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseKey? = nil,
-                parent: CoseMessage? = nil) throws {
-        try super.init(phdr: phdr, uhdr: uhdr, payload: signature, externalAAD: externalAAD, key: key)
-        self.parent = parent
+                key: CoseSymmetricKey? = nil,
+                authTag: Data? = nil) {
+        super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
     }
     
     // MARK: - Methods
     /// Parses COSE_Signature objects
-    public override class func fromCoseObj(_ coseObj: [CBOR]) throws -> Self {
-        let instance = try super.fromCoseObj(coseObj)
-        return instance
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseSignature {
+        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? CoseSignature else {
+            throw CoseError.invalidMessage("Failed to decode base CoseSignature.")
+        }
+        return msg
     }
     
     /// Creates the signature structure.
     /// - Parameter detachedPayload: An optional detached payload.
     /// - Returns: Encoded additional authenticated data (AAD).
-    public func createSignatureStructure(detachedPayload: Data? = nil) throws -> Data {
+    public override func createSignatureStructure(detachedPayload: Data? = nil) throws -> Data {
         guard let parent = parent else {
             throw CoseError.invalidMessage("Parent message is not set")
         }
         
-        var signStructure: [CBOR] = [parent.context.toCBOR, parent.phdrEncoded?.toCBOR ?? Data().toCBOR]
+        var signStructure: [CBOR] = [
+            CBOR.utf8String(parent.context),
+            parent.phdrEncoded.toCBOR
+        ]
         
-        if let phdrEncoded = phdrEncoded, !phdrEncoded.isEmpty {
+        if !phdrEncoded.isEmpty {
             signStructure.append(phdrEncoded.toCBOR)
         }
         
@@ -73,24 +73,19 @@ public class CoseSignature: SignCommon {
     /// - Parameter detachedPayload: Optional detached payload.
     /// - Returns: Encoded CBOR representation of the signature.
     public func encode(detachedPayload: Data? = nil) throws -> [CBOR] {
+        let computedSignature = try self.computeSignature(detachedPayload: detachedPayload)
         return [
-            phdrEncoded?.toCBOR ?? Data().toCBOR,
-            uhdrEncoded?.toCBOR ?? Data().toCBOR,
-            try computeSignature(detachedPayload: detachedPayload).toCBOR
+            phdrEncoded.toCBOR,
+            CBOR.fromAny(uhdrEncoded),
+            computedSignature.toCBOR
         ]
-    }
-    
-    /// Computes the signature.
-    /// - Parameter detachedPayload: An optional detached payload.
-    /// - Returns: The computed signature as `Data`.
-    private func computeSignature(detachedPayload: Data?) throws -> Data {
-        let aad = try createSignatureStructure(detachedPayload: detachedPayload)
-        // Compute signature logic here
-        return Data() // Placeholder for actual signature computation
     }
     
     // MARK: - Description
     public override var description: String {
-        return "<COSE_Signature: [\(phdrEncoded ?? Data()), \(uhdrEncoded ?? Data()), \(payload ?? Data())]>"
+        let (phdr, uhdr) = hdrRepr()
+        let payloadDescription = truncate((payload?.base64EncodedString())!)
+        
+        return "<COSE_Signature: [phdr: \(phdr), uhdr: \(uhdr), payload: \(String(describing: payloadDescription))]>"
     }
 }

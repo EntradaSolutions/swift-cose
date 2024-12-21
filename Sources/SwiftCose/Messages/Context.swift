@@ -91,7 +91,7 @@ public struct CoseKDFContext {
     var partyVInfo: PartyInfo = PartyInfo()
     var suppPrivInfo: Data = Data()
 
-    func encode() throws -> [CBOR] {
+    func encode() throws -> Data {
         var context: [CBOR] = [
             CBOR.unsignedInt(UInt64(algorithm.identifier)),
             CBOR.array(partyUInfo.encode()),
@@ -103,6 +103,6 @@ public struct CoseKDFContext {
             context.append(try! CBORSerialization.cbor(from: suppPrivInfo))
         }
 
-        return context
+        return try CBORSerialization.data(from: .array(context))
     }
 }

@@ -9,8 +9,8 @@ public class MacMessage: MacCommon {
     public var recipients: [CoseRecipient] = []
     
     // MARK: - Initialization
-    public init(phdr: [String: CoseHeaderAttribute]? = nil,
-                uhdr: [String: CoseHeaderAttribute]? = nil,
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil,
@@ -24,26 +24,38 @@ public class MacMessage: MacCommon {
     }
     
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [Any]) throws -> MacMessage {
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> MacMessage {
         guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? MacMessage else {
             throw CoseError.invalidMessage("Failed to decode base EncMessage.")
         }
         
         // Extract and assign the authentication tag
         if !coseObj.isEmpty {
-            msg.authTag = (coseObj.removeFirst() as? Data)!
+            msg.authTag = coseObj.removeFirst().bytesStringValue!
         } else {
             throw CoseError.valueError("Missing authentication tag in COSE object.")
         }
 
         // Attempt to decode recipients
         do {
-            if let recipientArray = coseObj.first as? [Any] {
+            if let recipientArray = coseObj.first?.arrayValue {
                 coseObj.removeFirst()
-                let recipients = try recipientArray.map {
-                    try CoseRecipient.createRecipient(from: $0, allowUnknownAttributes: true, context: "Mac_Recipient")
+                for recipient in recipientArray {
+                    guard let recipient = recipient.arrayValue else {
+                        throw CoseError.valueError("Invalid recipient")
+                    }
+                    guard recipient.count == 3 else {
+                        throw CoseError.valueError("Invalid recipient")
+                    }
+                    try msg.recipients
+                        .append(
+                            CoseRecipient
+                                .createRecipient(
+                                    recipient: recipient,
+                                    context: "Mac_Recipient"
+                                )
+                        )
                 }
-                msg.recipients = recipients
             } else {
                 msg.recipients = [] // No recipients present
             }
@@ -63,7 +75,7 @@ public class MacMessage: MacCommon {
         var message: [CBOR] = []
         
         if mac {
-            let computedTag = self.computeTag()
+            let computedTag = try self.computeTag()
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
@@ -77,14 +89,14 @@ public class MacMessage: MacCommon {
         }
         
         if !self.recipients.isEmpty {
-            guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
+            guard try getAttr(Algorithm()) is CoseAlgorithm else {
                 throw CoseError.invalidAlgorithm("Algorithm not found in headers")
             }
             
             let recipientData = try recipients.map {
                 try $0
                     .encode(
-                        targetAlg: alg
+                        message: message
                     ).toCBOR
             }
             message.append(CBOR.array(recipientData))
@@ -110,8 +122,7 @@ public class MacMessage: MacCommon {
             return try super.computeTag()
         } else if recipientTypes.contains(where: { $0 is KeyWrap }) || recipientTypes.contains(where: { $0 is KeyAgreementWithKeyWrap }) {
             // Generate random key bytes
-            var keyBytes = Data(count: targetAlgorithm.keyLength!)
-            _ = keyBytes.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, keyBytes.count, $0.baseAddress!) }
+            var keyBytes = Data.randomBytes(count: targetAlgorithm.keyLength!)
             
             for recipient in recipients {
                 if recipient.payload?.isEmpty ?? true {
@@ -122,7 +133,9 @@ public class MacMessage: MacCommon {
                 if let recipient = recipient as? KeyAgreementWithKeyWrap {
                     let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm)
                 } else if let recipient = recipient as? KeyWrap {
-                    let _ = try recipient.encrypt(targetAlg: targetAlgorithm)
+                    let _ = try recipient.encrypt(
+                        targetAlgorithm: targetAlgorithm
+                    )
                 } else {
                     throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")
                 }
@@ -144,7 +157,6 @@ public class MacMessage: MacCommon {
     public override var description: String {
         let (phdr, uhdr) = hdrRepr()
         let payloadDescription = truncate((payload?.base64EncodedString())!)
-        let recipientsDesc = recipients.map { $0.description }.joined(separator: ", ")
         let authTagDescription = truncate((authTag.base64EncodedString()))
         let recipientsDescription = recipients.map { $0.description }.joined(separator: ", ")
         return "<COSE_Mac: [\(phdr), \(uhdr), \(payloadDescription), \(authTagDescription), [\(recipientsDescription)]]>"

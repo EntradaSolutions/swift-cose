@@ -5,13 +5,61 @@ import OrderedCollections
 
 /// Abstract base class for all COSE key types.
 public class CoseKey: CustomStringConvertible {
+    
+    // MARK: - Abstract Properties
     public var description: String {
         fatalError("Must be overridden in subclass.")
     }
 
+    // MARK: - Properties
     public var store: [AnyHashable: Any] = [:]
     private var keyTypes: [String: CoseKey] = [:]
     private var key: CoseKey?
+    
+    public var keyOps: [KeyOps] {
+        get {
+            return store[KpKeyOps()] as? [KeyOps] ?? []
+        }
+        set {
+            store[KpKeyOps()] = newValue
+        }
+    }
+    
+    public var kty: KTY? {
+        get {
+            return store[KpKty()] as? KTY
+        }
+        set {
+            store[KpKty()] = newValue
+        }
+    }
+    
+    public var alg: CoseAlgorithm? {
+        get {
+            return store[KpAlg()] as? CoseAlgorithm
+        }
+        set {
+            store[KpAlg()] = newValue
+        }
+    }
+    
+    public var kid: Data? {
+        get {
+            return store[KpKid()] as? Data
+        }
+        set {
+            store[KpKid()] = newValue
+        }
+    }
+    
+    public var baseIV: Data? {
+        get {
+            return store[KpBaseIV()] as? Data
+        }
+        set {
+            store[KpBaseIV()] = newValue
+        }
+    }
     
     // MARK: - Initialization
     init(keyDict: [AnyHashable: Any]) {
@@ -142,6 +190,42 @@ public class CoseKey: CustomStringConvertible {
         return try keyTypeClass.fromDictionary(received)
     }
     
+    /// Initializes a COSE key from a PEM-encoded private key.
+    /// - Parameters:
+    ///   - pem: PEM-encoded private key as a String.
+    ///   - password: Optional password to decrypt the key.
+    ///   - optionalParams: Optional parameters to add to the key.
+    /// - Throws: CoseError if the key cannot be loaded.
+    /// - Returns: An initialized `CoseKey` object.
+    public static func fromPEMPrivateKey(pem: String,
+                                         password: Data? = nil,
+                                         optionalParams: [String: Any]? = nil) throws -> CoseKey {
+        // Load the PEM private key
+        guard let privateKey = try? loadPEMPrivateKey(pem: pem, password: password) else {
+            throw CoseError.invalidKeyType("Failed to load PEM private key")
+        }
+        
+        // Convert to COSE key
+        return try CoseKey.fromCryptographyKey(privateKey, optionalParams: optionalParams)
+    }
+    
+    /// Initializes a COSE key from a PEM-encoded public key.
+    /// - Parameters:
+    ///   - pem: PEM-encoded public key as a String.
+    ///   - optionalParams: Optional parameters to add to the key.
+    /// - Throws: CoseError if the key cannot be loaded.
+    /// - Returns: An initialized `CoseKey` object.
+    public static func fromPEMPublicKey(pem: String,
+                                        optionalParams: [String: Any]? = nil) throws -> CoseKey {
+        // Load the PEM public key
+        guard let publicKey = try? loadPEMPublicKey(pem: pem) else {
+            throw CoseError.invalidKeyType("Failed to load PEM public key")
+        }
+        
+        // Convert to COSE key
+        return try CoseKey.fromCryptographyKey(publicKey, optionalParams: optionalParams)
+    }
+    
     /// Initialize a COSE key from an external cryptographic key.
     ///
     /// - Parameters:
@@ -187,57 +271,35 @@ public class CoseKey: CustomStringConvertible {
         coseKey.removeValue(forKey: parameter.fullname)
     }
     
-    // MARK: - Subscripts
-    subscript(key: String) -> Any? {
-        get { return store[key] }
-        set { store[key] = newValue }
-    }
-    
-    // MARK: - Key Operations
-    public var keyOps: [KeyOps] {
+    // MARK: - Store Methods
+    // Subscript for getting values
+    public subscript(key: Any) -> Any? {
         get {
-            return store[KpKeyOps()] as? [KeyOps] ?? []
+            return store[keyTransform(key)]
         }
         set {
-            store[KpKeyOps()] = newValue
+            store[keyTransform(key)] = newValue
         }
     }
     
-    // MARK: - Key Attributes
-    public var kty: KTY? {
-        get {
-            return store[KpKty()] as? KTY
-        }
-        set {
-            store[KpKty()] = newValue
-        }
+    // Deletion method
+    public func removeItem(forKey key: Any) {
+        store.removeValue(forKey: keyTransform(key))
     }
     
-    public var alg: CoseAlgorithm? {
-        get {
-            return store[KpAlg()] as? CoseAlgorithm
-        }
-        set {
-            store[KpAlg()] = newValue
-        }
+    // Contains method
+    public func contains(_ key: Any) -> Bool {
+        return store.keys.contains(keyTransform(key))
     }
     
-    public var kid: Data? {
-        get {
-            return store[KpKid()] as? Data
-        }
-        set {
-            store[KpKid()] = newValue
-        }
+    // Iteration method similar
+    public func iterator() -> Dictionary<AnyHashable, Any>.Iterator {
+        return store.makeIterator()
     }
     
-    public var baseIV: Data? {
-        get {
-            return store[KpBaseIV()] as? Data
-        }
-        set {
-            store[KpBaseIV()] = newValue
-        }
+    // Length method
+    public var count: Int {
+        return store.count
     }
     
     // MARK: - Verification
@@ -308,5 +370,41 @@ public class CoseKey: CustomStringConvertible {
         }
         
         return names
+    }
+    
+    /// Load a PEM-encoded private key
+    private static func loadPEMPrivateKey(pem: String, password: Data?) throws -> Any {
+        let pemData = Data(pem.utf8)
+        let options: [String: Any] = password != nil ? [kSecImportExportPassphrase as String: password!] : [:]
+        
+        var items: CFArray?
+        let status = SecPKCS12Import(pemData as CFData, options as CFDictionary, &items)
+        
+        guard status == errSecSuccess, let array = items as? [[String: Any]], let identity = array.first?[kSecImportItemIdentity as String] else {
+            throw CoseError.invalidKeyType("Invalid PEM format for private key.")
+        }
+        
+        return identity
+    }
+    
+    /// Load a PEM-encoded public key
+    private static func loadPEMPublicKey(pem: String) throws -> Any {
+        let pemData = Data(pem.utf8)
+        let options: [String: Any] = [:]
+        
+        var error: Unmanaged<CFError>?
+        guard let secKey = SecKeyCreateWithData(pemData as CFData, options as CFDictionary, &error) else {
+            throw CoseError.invalidKeyType("Invalid PEM format for public key.")
+        }
+        
+        return secKey
+    }
+    
+    private func keyTransform(_ key: Any) -> KeyParam? {
+        do {
+            return try KeyParam.fromId(for: key)
+        } catch {
+            return nil
+        }
     }
 }

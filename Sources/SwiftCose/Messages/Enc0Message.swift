@@ -15,8 +15,8 @@ public class Enc0Message: EncCommon {
     ///   - externalAad: External data (is authenticated but not transported in the message).
     ///   - key: The Symmetric COSE key for encryption/decryption of the message
     /// - Returns: A COSE Encrypt0 message object.
-    public override init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
-                         uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+    public override init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                         uhdr: [CoseHeaderAttribute: Any]? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
                          key: CoseSymmetricKey? = nil) {
@@ -31,7 +31,7 @@ public class Enc0Message: EncCommon {
     /// Function to decode a COSE_Encrypt0 message
     /// - Parameter coseObj: The array to decode.
     /// - Returns: The decoded Enc0Message.
-    public override class func fromCoseObject(coseObj: inout [Any]) throws -> Enc0Message {
+    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> Enc0Message {
         return try super.fromCoseObject(
             coseObj: &coseObj
         ) as! Enc0Message

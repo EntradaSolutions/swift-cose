@@ -73,27 +73,27 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
         }
     }
 
-    public func deriveKek(curve: CoseCurve, privateKey: EC2Key, publicKey: EC2Key, context: CoseKDFContext) throws -> Data {
+    public func deriveKEK(curve: CoseCurve, privateKey: EC2Key, publicKey: EC2Key, context: CoseKDFContext) throws -> Data {
         let sharedSecret = try ecdh(curve: curve, privateKey: privateKey, publicKey: publicKey)
+        let hkdf: SymmetricKey
         
         switch self.hashFunction {
             case .sha256:
-                let hkdf = HKDF<SHA256>.deriveKey(
+                hkdf = HKDF<SHA256>.deriveKey<Data>(
                     inputKeyMaterial: SymmetricKey(data: sharedSecret),
-                    info: context.encode(),
+                    info: try context.encode(),
                     outputByteCount: context.suppPubInfo.keyDataLength
                 )
-                return hkdf.withUnsafeBytes { Data($0) }
             case .sha512:
-                let hkdf = HKDF<SHA512>.deriveKey(
+                hkdf = HKDF<SHA512>.deriveKey<SymmetricKey>(
                     inputKeyMaterial: SymmetricKey(data: sharedSecret),
-                    info: context.encode(),
+                    info: try context.encode(),
                     outputByteCount: context.suppPubInfo.keyDataLength
                 )
-                return hkdf.withUnsafeBytes { Data($0) }
             default:
                 throw CoseError.invalidAlgorithm("Unsupported hash function")
         }
+        return hkdf.withUnsafeBytes { Data($0) }
     }
     
 //    public func keyLength() -> Int {

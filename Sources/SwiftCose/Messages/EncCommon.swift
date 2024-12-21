@@ -23,8 +23,8 @@ public class EncCommon: CoseMessage {
     }
 
     // MARK: - Initialization
-    public init(phdr: [AnyHashable: CoseHeaderAttribute]? = nil,
-                uhdr: [AnyHashable: CoseHeaderAttribute]? = nil,
+    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil) {
@@ -124,7 +124,7 @@ public class EncCommon: CoseMessage {
 
     private func getNonce() throws -> Data {
         // Attempt to retrieve the IV attribute
-        var nonce = try getAttr(IV()) as? String
+        let nonce = try getAttr(IV()) as? String
         
         if nonce == nil, let baseIV = self.key?.baseIV, !baseIV.isEmpty {
             // Retrieve the PartialIV attribute
