@@ -103,11 +103,11 @@ public class CoseSymmetricKey: CoseKey {
     ///   - optionalParams: Optional key attributes for the `SymmetricKey` object, e.g., `KpAlg` or  `KpKid`.
     /// - Returns: A COSE_key of type SymmetricKey.
     /// - Throws: `CoseError` if key length is invalid.
-    public static func generateKey(keyLen: Int, optionalParams: [AnyHashable: AnyValue]? = nil) throws -> CoseSymmetricKey {
-        guard keyLen == 16 || keyLen == 24 || keyLen == 32 else {
+    public static func generateKey(keyLength: Int, optionalParams: [AnyHashable: AnyValue]? = nil) throws -> CoseSymmetricKey {
+        guard keyLength == 16 || keyLength == 24 || keyLength == 32 else {
             throw CoseError.invalidKey("Key length must be 16, 24, or 32 bytes")
         }
-        let keyData = Data((0..<keyLen).map { _ in UInt8.random(in: 0...255) })
+        let keyData = Data.randomBytes(count: keyLength)
         return try CoseSymmetricKey(
             k: keyData,
             optionalParams: optionalParams ?? [:]
@@ -138,7 +138,9 @@ public class CoseSymmetricKey: CoseKey {
         var keyRepresentation = keyRepr()
         
         if let key = keyRepresentation[SymKpK()] as? Data, !key.isEmpty {
-            keyRepresentation[SymKpK()] = truncate(key.base64EncodedString())
+            keyRepresentation[SymKpK()] = truncate(
+                key.base64EncodedString()
+            )
         }
         
         return "<COSE_Key(Symmetric): \(keyRepresentation)>"

@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "F8C21B05-5FCC-4F04-BB29-C649E37177FA",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "SwiftCoseTests",
+        "name" : "SwiftCoseTests"
+      }
+    }
+  ],
+  "version" : 1
+}

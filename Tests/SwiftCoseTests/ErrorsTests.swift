@@ -1,137 +1,150 @@
-import XCTest
+import Testing
 @testable import SwiftCose
 
-final class CoseErrorTests: XCTestCase {
+struct CoseErrorTests {
     
-    func testGenericException() {
-        let errorMessage = "A generic error occurred"
-        let error = CoseError.genericError(errorMessage)
-        
-        switch error {
-        case .genericError(let message):
-            XCTAssertEqual(message, errorMessage, "The generic exception message should match the provided string.")
-        default:
-            XCTFail("Expected .genericException case.")
-        }
+    @Test func testCoseErrorAttributeError() async throws {
+        let error = CoseError.attributeError("Missing attribute")
+        #expect(validateErrorCase(error, expected: "Missing attribute"))
     }
     
-    func testIllegalAlgorithm() {
-        let errorMessage = "Algorithm not supported"
-        let error = CoseError.invalidAlgorithm(errorMessage)
-        
-        switch error {
-        case .invalidAlgorithm(let message):
-            XCTAssertEqual(message, errorMessage, "The illegal algorithm message should match the provided string.")
-        default:
-            XCTFail("Expected .illegalAlgorithm case.")
-        }
+    @Test func testCoseErrorGenericError() async throws {
+        let error = CoseError.genericError("Unknown error")
+        #expect(validateErrorCase(error, expected: "Unknown error"))
     }
     
-    func testIllegalKeyOps() {
-        let errorMessage = "Invalid key operations"
-        let error = CoseError.invalidKeyOps(errorMessage)
-        
-        switch error {
-        case .invalidKeyOps(let message):
-            XCTAssertEqual(message, errorMessage, "The illegal key operations message should match the provided string.")
-        default:
-            XCTFail("Expected .illegalKeyOps case.")
-        }
+    @Test func testCoseErrorInvalidCurve() async throws {
+        let error = CoseError.invalidCurve("Unsupported curve P-521")
+        #expect(validateErrorCase(error, expected: "Unsupported curve P-521"))
     }
     
-    func testIllegalKeyType() {
-        let errorMessage = "Invalid key type"
-        let error = CoseError.invalidKeyType(errorMessage)
-        
-        switch error {
-        case .invalidKeyType(let message):
-            XCTAssertEqual(message, errorMessage, "The illegal key type message should match the provided string.")
-        default:
-            XCTFail("Expected .illegalKeyType case.")
-        }
+    @Test func testCoseErrorInvalidKeyOps() async throws {
+        let error = CoseError.invalidKeyOps("Invalid key operation")
+        #expect(validateErrorCase(error, expected: "Invalid key operation"))
     }
     
-    func testInvalidKey() {
-        let errorMessage = "Key is not valid"
-        let error = CoseError.invalidKey(errorMessage)
-        
-        switch error {
-        case .invalidKey(let message):
-            XCTAssertEqual(message, errorMessage, "The invalid key message should match the provided string.")
-        default:
-            XCTFail("Expected .invalidKey case.")
-        }
+    @Test func testCoseErrorInvalidKeyType() async throws {
+        let error = CoseError.invalidKeyType("Unsupported key type")
+        #expect(validateErrorCase(error, expected: "Unsupported key type"))
     }
     
-    func testInvalidKIDValue() {
-        let errorMessage = "KID value is not valid"
-        let error = CoseError.invalidKIDValue(errorMessage)
-        
-        switch error {
-        case .invalidKIDValue(let message):
-            XCTAssertEqual(message, errorMessage, "The invalid KID value message should match the provided string.")
-        default:
-            XCTFail("Expected .invalidKIDValue case.")
-        }
+    @Test func testCoseErrorInvalidAlgorithm() async throws {
+        let error = CoseError.invalidAlgorithm("Algorithm not recognized")
+        #expect(validateErrorCase(error, expected: "Algorithm not recognized"))
     }
     
-    func testInvalidCriticalValue() {
-        let errorMessage = "Critical value is not valid"
-        let error = CoseError.invalidCriticalValue(errorMessage)
-        
-        switch error {
-        case .invalidCriticalValue(let message):
-            XCTAssertEqual(message, errorMessage, "The invalid critical value message should match the provided string.")
-        default:
-            XCTFail("Expected .invalidCriticalValue case.")
-        }
+    @Test func testCoseErrorInvalidCertificate() async throws {
+        let error = CoseError.invalidCertificate("Certificate malformed")
+        #expect(validateErrorCase(error, expected: "Certificate malformed"))
     }
     
-    func testInvalidContentType() {
-        let errorMessage = "Content type is invalid"
-        let error = CoseError.invalidContentType(errorMessage)
-        
-        switch error {
-        case .invalidContentType(let message):
-            XCTAssertEqual(message, errorMessage, "The invalid content type message should match the provided string.")
-        default:
-            XCTFail("Expected .invalidContentType case.")
-        }
+    @Test func testCoseErrorInvalidKey() async throws {
+        let error = CoseError.invalidKey("Invalid key data")
+        #expect(validateErrorCase(error, expected: "Invalid key data"))
     }
     
-    func testMalformedMessage() {
-        let errorMessage = "Message is malformed"
-        let error = CoseError.malformedMessage(errorMessage)
-        
-        switch error {
-        case .malformedMessage(let message):
-            XCTAssertEqual(message, errorMessage, "The malformed message error should match the provided string.")
-        default:
-            XCTFail("Expected .malformedMessage case.")
-        }
+    @Test func testCoseErrorInvalidKeyFormat() async throws {
+        let error = CoseError.invalidKeyFormat("Incorrect key format")
+        #expect(validateErrorCase(error, expected: "Incorrect key format"))
     }
     
-    func testUnknownAttribute() {
-        let errorMessage = "Unknown attribute found"
-        let error = CoseError.unknownAttribute(errorMessage)
-        
-        switch error {
-        case .unknownAttribute(let message):
-            XCTAssertEqual(message, errorMessage, "The unknown attribute error should match the provided string.")
-        default:
-            XCTFail("Expected .unknownAttribute case.")
-        }
+    @Test func testCoseErrorInvalidKIDValue() async throws {
+        let error = CoseError.invalidKIDValue("KID value error")
+        #expect(validateErrorCase(error, expected: "KID value error"))
     }
     
-    func testUnsupportedCurve() {
-        let errorMessage = "Curve is not supported"
-        let error = CoseError.unsupportedCurve(errorMessage)
-        
+    @Test func testCoseErrorInvalidIV() async throws {
+        let error = CoseError.invalidIV("IV value invalid")
+        #expect(validateErrorCase(error, expected: "IV value invalid"))
+    }
+    
+    @Test func testCoseErrorInvalidCriticalValue() async throws {
+        let error = CoseError.invalidCriticalValue("Critical value missing")
+        #expect(validateErrorCase(error, expected: "Critical value missing"))
+    }
+    
+    @Test func testCoseErrorInvalidContentType() async throws {
+        let error = CoseError.invalidContentType("Unsupported content type")
+        #expect(validateErrorCase(error, expected: "Unsupported content type"))
+    }
+    
+    @Test func testCoseErrorInvalidHeader() async throws {
+        let error = CoseError.invalidHeader("Header malformed")
+        #expect(validateErrorCase(error, expected: "Header malformed"))
+    }
+    
+    @Test func testCoseErrorInvalidMessage() async throws {
+        let error = CoseError.invalidMessage("Message corrupted")
+        #expect(validateErrorCase(error, expected: "Message corrupted"))
+    }
+    
+    @Test func testCoseErrorInvalidRecipientConfiguration() async throws {
+        let error = CoseError.invalidRecipientConfiguration("Recipient misconfigured")
+        #expect(validateErrorCase(error, expected: "Recipient misconfigured"))
+    }
+    
+    @Test func testCoseErrorMalformedMessage() async throws {
+        let error = CoseError.malformedMessage("Malformed COSE message")
+        #expect(validateErrorCase(error, expected: "Malformed COSE message"))
+    }
+    
+    @Test func testCoseErrorNotImplemented() async throws {
+        let error = CoseError.notImplemented("Feature not available")
+        #expect(validateErrorCase(error, expected: "Feature not available"))
+    }
+    
+    @Test func testCoseErrorOpenSSLError() async throws {
+        let error = CoseError.openSSLError("OpenSSL failure")
+        #expect(validateErrorCase(error, expected: "OpenSSL failure"))
+    }
+    
+    @Test func testCoseErrorUnknownAttribute() async throws {
+        let error = CoseError.unknownAttribute("Unknown attribute encountered")
+        #expect(validateErrorCase(error, expected: "Unknown attribute encountered"))
+    }
+    
+    @Test func testCoseErrorUnsupportedCurve() async throws {
+        let error = CoseError.unsupportedCurve("Curve not supported")
+        #expect(validateErrorCase(error, expected: "Curve not supported"))
+    }
+    
+    @Test func testCoseErrorUnsupportedRecipient() async throws {
+        let error = CoseError.unsupportedRecipient("Recipient type unsupported")
+        #expect(validateErrorCase(error, expected: "Recipient type unsupported"))
+    }
+    
+    @Test func testCoseErrorValueError() async throws {
+        let error = CoseError.valueError("Incorrect value")
+        #expect(validateErrorCase(error, expected: "Incorrect value"))
+    }
+    
+    /// Helper function to validate error cases
+    private func validateErrorCase(_ error: CoseError, expected: String) -> Bool {
         switch error {
-        case .unsupportedCurve(let message):
-            XCTAssertEqual(message, errorMessage, "The unsupported curve error should match the provided string.")
-        default:
-            XCTFail("Expected .unsupportedCurve case.")
+        case .attributeError(let message),
+             .genericError(let message),
+             .invalidCurve(let message),
+             .invalidKeyOps(let message),
+             .invalidKeyType(let message),
+             .invalidAlgorithm(let message),
+             .invalidCertificate(let message),
+             .invalidKey(let message),
+             .invalidKeyFormat(let message),
+             .invalidKIDValue(let message),
+             .invalidIV(let message),
+             .invalidCriticalValue(let message),
+             .invalidContentType(let message),
+             .invalidHeader(let message),
+             .invalidMessage(let message),
+             .invalidRecipientConfiguration(let message),
+             .malformedMessage(let message),
+             .notImplemented(let message),
+             .openSSLError(let message),
+             .unknownAttribute(let message),
+             .unsupportedCurve(let message),
+             .unsupportedRecipient(let message),
+             .valueError(let message):
+            return message == expected
         }
     }
 }

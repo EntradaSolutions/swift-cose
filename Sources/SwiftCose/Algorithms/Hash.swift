@@ -16,7 +16,7 @@ public class HashAlgorithm: CoseAlgorithm {
         super.init(identifier: identifier, fullname: fullname)
     }
 
-    public func computeHash(data: Data) -> Data {
+    public func computeHash(data: Data) throws -> Data {
         var hash: [UInt8]
         switch hashAlgorithm {
             case .sha1:
@@ -36,7 +36,7 @@ public class HashAlgorithm: CoseAlgorithm {
                 shake.update(data.toBytes)
                 hash = shake.digest(64)
             default:
-                fatalError("Unsupported hash algorithm")
+                throw CoseError.invalidAlgorithm("Unsupported hash algorithm")
         }
         
         var digest = Data(hash)

@@ -3,31 +3,41 @@ import CryptoSwift
 
 public class AesGcmAlgorithm: EncAlgorithm  {
     public func encrypt(key: CoseSymmetricKey, nonce: Data, data: Data, aad: Data?) throws -> Data {
+        let gcm = GCM(
+            iv: nonce.toBytes,
+            additionalAuthenticatedData: aad?.toBytes,
+            mode: .combined
+        )
         let aes = try! AES(
             key: key.k.toBytes,
-            blockMode:
-                GCM(
-                    iv: nonce.toBytes,
-                    additionalAuthenticatedData: aad?.toBytes
-                ),
-            padding: .noPadding
+            blockMode: gcm
         )
-        let encrypted = try! aes.encrypt(data.toBytes)
-        return encrypted.toData
+        
+        do {
+            let encrypted = try aes.encrypt(data.toBytes)
+            return encrypted.toData
+        } catch {
+            throw CoseError.genericError("Encryption failed: \(error.localizedDescription)")
+        }
     }
 
     public func decrypt(key: CoseSymmetricKey, nonce: Data, ciphertext: Data, aad: Data?) throws -> Data {
+        let gcm = GCM(
+            iv: nonce.toBytes,
+            additionalAuthenticatedData: aad?.toBytes,
+            mode: .combined
+        )
         let aes = try! AES(
             key: key.k.toBytes,
-            blockMode:
-                GCM(
-                    iv: nonce.toBytes,
-                    additionalAuthenticatedData: aad?.toBytes
-                ),
-            padding: .noPadding
+            blockMode: gcm
         )
-        let decrypted = try! aes.decrypt(ciphertext.toBytes)
-        return decrypted.toData
+        
+        do {
+            let decrypted = try aes.decrypt(ciphertext.toBytes)
+            return decrypted.toData
+        } catch {
+            throw CoseError.genericError("Decryption failed: \(error.localizedDescription)")
+        }
     }
 }
 

@@ -45,7 +45,7 @@ public class X5T: Equatable {
             let cbor = try CBORSerialization.cbor(from: certificate)
             certData = cbor.bytesStringValue!
         }
-        let hash = alg.computeHash(data: certData)
+        let hash = try alg.computeHash(data: certData)
         return X5T(alg: alg, thumbprint: hash)
     }
 
@@ -72,7 +72,8 @@ public class X5T: Equatable {
             let cbor = try CBORSerialization.cbor(from: certificate)
             certData = cbor.bytesStringValue!
         }
-        return thumbprint == alg.computeHash(data: certData)
+        let hash = try alg.computeHash(data: certData)
+        return thumbprint == hash
     }
 
     public static func == (lhs: X5T, rhs: X5T) -> Bool {

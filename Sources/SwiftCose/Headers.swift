@@ -38,33 +38,33 @@ public enum CoseHeaderIdentifier: Int, Codable {
     /// - Returns: The corresponding `CoseHeaderIdentifier` if found, otherwise nil.
     public static func fromFullName(_ fullname: String) -> CoseHeaderIdentifier? {
         switch fullname.uppercased() {
-        case "RESERVED": return .reserved
-        case "ALGORITHM": return .algorithm
-        case "CRITICAL": return .critical
-        case "CONTENT_TYPE": return .contentType
-        case "KID": return .kid
-        case "IV": return .iv
-        case "PARTIAL_IV": return .partialIV
-        case "COUNTER_SIGN": return .counterSignature
-        case "COUNTER_SIGN0": return .counterSignature0
-        case "KID_CONTEXT": return .kidContext
-        case "X5_BAG": return .x5bag
-        case "X5_CHAIN": return .x5chain
-        case "X5_T": return .x5t
-        case "X5_U": return .x5u
-        case "EPHEMERAL_KEY": return .ephemeralKey
-        case "STATIC_KEY": return .staticKey
-        case "STATIC_KEY_ID": return .staticKeyID
-        case "SALT": return .salt
-        case "PARTY_U_ID": return .partyUID
-        case "PARTY_U_NONCE": return .partyUNonce
-        case "PARTY_U_OTHER": return .partyUOther
-        case "PARTY_V_ID": return .partyVID
-        case "PARTY_V_NONCE": return .partyVNonce
-        case "PARTY_V_OTHER": return .partyVOther
-        case "SUPP_PUB_OTHER": return .suppPubOther
-        case "SUPP_PRIV_OTHER": return .suppPrivOther
-        default: return nil
+            case "RESERVED": return .reserved
+            case "ALG": return .algorithm
+            case "CRITICAL": return .critical
+            case "CONTENT_TYPE": return .contentType
+            case "KID": return .kid
+            case "IV": return .iv
+            case "PARTIAL_IV": return .partialIV
+            case "COUNTER_SIGN": return .counterSignature
+            case "COUNTER_SIGN0": return .counterSignature0
+            case "KID_CONTEXT": return .kidContext
+            case "X5_BAG": return .x5bag
+            case "X5_CHAIN": return .x5chain
+            case "X5_T": return .x5t
+            case "X5_U": return .x5u
+            case "EPHEMERAL_KEY": return .ephemeralKey
+            case "STATIC_KEY": return .staticKey
+            case "STATIC_KEY_ID": return .staticKeyID
+            case "SALT": return .salt
+            case "PARTY_U_ID": return .partyUID
+            case "PARTY_U_NONCE": return .partyUNonce
+            case "PARTY_U_OTHER": return .partyUOther
+            case "PARTY_V_ID": return .partyVID
+            case "PARTY_V_NONCE": return .partyVNonce
+            case "PARTY_V_OTHER": return .partyVOther
+            case "SUPP_PUB_OTHER": return .suppPubOther
+            case "SUPP_PRIV_OTHER": return .suppPrivOther
+            default: return nil
         }
     }
 }
@@ -77,11 +77,6 @@ public class CoseHeaderAttribute: CoseAttribute {
     ) {
         super.init(identifier: identifier.rawValue, fullname: fullname, valueParser: valueParser)
     }
-
-//    required public init(from decoder: Decoder) throws {
-//        fatalError("init(from:) has not been implemented")
-//    }
-    
     public static func fromId(for attribute: Any) throws -> CoseHeaderAttribute {
         switch attribute {
             case let id as Int:

@@ -1,7 +1,5 @@
 import Foundation
 
-import Foundation
-
 /// `CoseError` is an enumeration of errors that can be thrown by the COSE library.
 enum CoseError: Error {
     case attributeError(String)
