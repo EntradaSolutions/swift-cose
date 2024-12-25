@@ -1,7 +1,6 @@
 import Foundation
 import CryptoKit
 import CryptoSwift
-import PotentCodables
 
 public class RSAKey: CoseKey {
     var other: [[String: Any]] = []
@@ -41,9 +40,9 @@ public class RSAKey: CoseKey {
     }
     
     // MARK: - p Property
-    var p: BigUInteger? {
+    var p: Data? {
         get {
-            return store[RSAKpP()] as? BigUInteger
+            return store[RSAKpP()] as? Data
         }
         set {
             store[RSAKpP()] = newValue
@@ -51,9 +50,9 @@ public class RSAKey: CoseKey {
     }
     
     // MARK: - q Property
-    var q: BigUInteger? {
+    var q: Data? {
         get {
-            return store[RSAKpQ()] as? BigUInteger
+            return store[RSAKpQ()] as? Data
         }
         set {
             store[RSAKpQ()] = newValue
@@ -61,9 +60,9 @@ public class RSAKey: CoseKey {
     }
     
     // MARK: - dp Property
-    var dp: BigUInteger? {
+    var dp: Data? {
         get {
-            return store[RSAKpDP()] as? BigUInteger
+            return store[RSAKpDP()] as? Data
         }
         set {
             store[RSAKpDP()] = newValue
@@ -71,9 +70,9 @@ public class RSAKey: CoseKey {
     }
     
     // MARK: - dq Property
-    var dq: BigUInteger? {
+    var dq: Data? {
         get {
-            return store[RSAKpDQ()] as? BigUInteger
+            return store[RSAKpDQ()] as? Data
         }
         set {
             store[RSAKpDQ()] = newValue
@@ -82,9 +81,9 @@ public class RSAKey: CoseKey {
 
     
     // MARK: - qInv Property
-    var qInv: BigUInteger? {
+    var qInv: Data? {
         get {
-            return store[RSAKpQInv()] as? BigUInteger
+            return store[RSAKpQInv()] as? Data
         }
         set {
             store[RSAKpQInv()] = newValue
@@ -121,11 +120,11 @@ public class RSAKey: CoseKey {
         n: Data? = nil,
         e: Data? = nil,
         d: Data? = nil,
-        p: BigUInteger? = nil,
-        q: BigUInteger? = nil,
-        dp: BigUInteger? = nil,
-        dq: BigUInteger? = nil,
-        qInv: BigUInteger? = nil,
+        p: Data? = nil,
+        q: Data? = nil,
+        dp: Data? = nil,
+        dq: Data? = nil,
+        qInv: Data? = nil,
         other: [[String: Any]] = [],
         r_i: Data? = nil,
         d_i: Data? = nil,
@@ -168,11 +167,11 @@ public class RSAKey: CoseKey {
         self.n = n
         self.e = e
         self.d = d
-        self.p = p ?? 0
-        self.q = q ?? 0
-        self.dp = dp ?? 0
-        self.dq = dq ?? 0
-        self.qInv = qInv ?? 0
+        self.p = p
+        self.q = q
+        self.dp = dp
+        self.dq = dq
+        self.qInv = qInv
         self.other = other
         self.r_i = r_i
         self.d_i = d_i
@@ -187,35 +186,26 @@ public class RSAKey: CoseKey {
     ///   - extKey: The external RSA key object.
     ///   - optionalParams: The optional parameters.
     /// - Returns: An initialized `RSAkey`
-    public static func fromCryptographyKey(extKey: Any, optionalParams: [AnyHashable: AnyValue]) throws -> RSAKey {
-        guard RSAKey.supportsCryptographyKeyType(extKey) else {
-            throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
+    public static func fromCryptographyKey(extKey: RSA, optionalParams: [AnyHashable: Any]) throws -> RSAKey {
+        
+        let n: BigUInteger = extKey.n
+        let e: BigUInteger = extKey.e
+        let d: BigUInteger? = extKey.d
+        
+        var coseKey: [AnyHashable : Any] = [
+            RSAKpE(): toBstr(e),
+            RSAKpN(): toBstr(n),
+        ] as! [AnyHashable : Any]
+        
+        if let d = d { coseKey[RSAKpD()] = toBstr(d) }
+        
+        // Merge optional params
+        for (key, value) in optionalParams {
+            coseKey[key] = value
         }
-        
-        var n: BigUInteger?
-        var e: BigUInteger?
-        var d: BigUInteger?
-        
-        
-        if let privateKey = extKey as? RSA {
-            n = privateKey.n
-            e = privateKey.e
-            d = privateKey.d
-        }
-        
-        var coseKey: [AnyHashable : AnyValue] = [
-            RSAKpE(): toBstr(e!),
-            RSAKpN(): toBstr(n!),
-        ] as! [AnyHashable : AnyValue]
-        
-        if let d = d { coseKey[RSAKpD()] = AnyValue.data(toBstr(d)) }
-        
-        return try RSAKey(
-            n: n!.toData,
-            e: e!.toData,
-            d: d?.toData ?? Data(),
-            optionalParams: optionalParams
-        )
+
+        // Initialize RSAKey from dictionary
+        return try RSAKey.fromDictionary(coseKey)
     }
     
     /// Generate a random RSAKey COSE key object. The RSA keys have two primes (see section 4 of RFC 8230).
@@ -223,7 +213,7 @@ public class RSAKey: CoseKey {
     ///  - keyBits: The key length in bits.
     ///  - optionalParams: The optional parameters.
     /// - Returns: A COSE `RSAKey` key.
-    static func generateKey(keyBits: Int, optionalParams: [AnyHashable: AnyValue] = [:]) throws -> RSAKey {
+    static func generateKey(keyBits: Int, optionalParams: [AnyHashable: Any] = [:]) throws -> RSAKey {
         guard keyBits % 8 == 0 else {
             throw CoseError.invalidKey("Invalid key length")
         }
@@ -242,19 +232,22 @@ public class RSAKey: CoseKey {
           throw RSA.Error.invalidInverseNotCoprimes
         }
 
-        let extKey = try RSA(n: n, e: e, d: d, p: p, q: q)
+        let extKey = try CryptoSwift.RSA(n: n, e: e, d: d, p: p, q: q)
         
-        var additionalParams: [AnyHashable : AnyValue] = [
+        var additionalParams: [AnyHashable : Any] = [
             RSAKpP():toBstr(p),
             RSAKpQ():toBstr(q),
-        ] as! [AnyHashable : AnyValue]
+        ] as! [AnyHashable : Any]
         
         // Merge optional params
         for (key, value) in optionalParams {
             additionalParams[key] = value
         }
 
-        return try RSAKey.fromCryptographyKey(extKey: extKey, optionalParams: additionalParams)
+        return try RSAKey.fromCryptographyKey(
+            extKey: extKey,
+            optionalParams: additionalParams
+        )
     }
     
     /// Returns an initialized COSE Key object of type RSAKey.
@@ -296,11 +289,11 @@ public class RSAKey: CoseKey {
             n: n as? Data,
             e: e as? Data,
             d: d as? Data,
-            p: p as? BigUInteger,
-            q: q as? BigUInteger,
-            dp: dp as? BigUInteger,
-            dq: dq as? BigUInteger,
-            qInv: qInv as? BigUInteger,
+            p: p as? Data,
+            q: q as? Data,
+            dp: dp as? Data,
+            dq: dq as? Data,
+            qInv: qInv as? Data,
             other: other as! [[String: Any]],
             r_i: r_i as? Data,
             d_i: d_i as? Data,
@@ -313,8 +306,7 @@ public class RSAKey: CoseKey {
     
     public static func supportsCryptographyKeyType(_ key: Any) -> Bool {
         let supportedKeyTypes: [Any] = [
-            RSA.PrivateKey.self,
-            RSA.PublicKey.self,
+            RSA.self,
         ]
         
         return supportedKeyTypes.contains(where: { $0 as? any Any.Type == type(of: key) })

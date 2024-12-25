@@ -1,13 +1,11 @@
 import Foundation
 import CryptoKit
 import PotentCodables
+import SwiftCurve448
 
 public class OKPKey: CoseKey {
-    private var _curve: CoseCurve?
-    public var optionalParams: [AnyHashable: Any]
-    
-    
     // MARK: - curve Property
+    public var optionalParams: [AnyHashable: Any]
     
     /// The mandatory `OKPKpCurve` attribute of the COSE OKP Key object.
     public var curve: CoseCurve {
@@ -19,19 +17,16 @@ public class OKPKey: CoseKey {
             }
         }
         set {
-            // Parse and validate the curve
-            guard let parsedCurve = try! OKPKpCurve().valueParser!(newValue) as? CoseCurve else {
-                fatalError("Failed to parse the curve")
-            }
-            
-            if parsedCurve.keyType != .ktyOKP {
-                fatalError("Invalid COSE curve \(parsedCurve) for key type \(OKPKey.self)")
+            if newValue.keyType != .ktyOKP {
+                fatalError("Invalid COSE curve \(newValue) for key type \(OKPKey.self)")
             }
             
             // Store the curve
-            store[OKPKpCurve()] = parsedCurve
+            _curve = newValue
+            store[OKPKpCurve()] = _curve
         }
     }
+    private var _curve: CoseCurve?
     
     
     // MARK: - x Property
@@ -151,7 +146,7 @@ public class OKPKey: CoseKey {
     /// - Returns: An initialized `OKPKey` object.
     public static func fromCryptographyKey(
         extKey: Any,
-        optionalParams: [AnyHashable: AnyValue] = [:]
+        optionalParams: [AnyHashable: Any] = [:]
     ) throws -> OKPKey {
         let curve = try curveFromCryptoKey(extKey)
         
@@ -186,12 +181,12 @@ public class OKPKey: CoseKey {
             throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
         }
         
-        var coseKey: [AnyHashable : AnyValue] = [
-            OKPKpCurve(): curve,
-        ] as! [AnyHashable : AnyValue]
+        var coseKey: [AnyHashable : Any] = [
+            OKPKpCurve(): curve.identifier,
+        ]
         
-        if let x = x { coseKey[EC2KpX()] = AnyValue.data(x) }
-        if let d = d { coseKey[EC2KpD()] = AnyValue.data(d) }
+        if let x = x { coseKey[EC2KpX()] = x }
+        if let d = d { coseKey[EC2KpD()] = d }
         
         // Merge optional params
         for (key, value) in optionalParams {
@@ -245,10 +240,8 @@ public class OKPKey: CoseKey {
     /// - Returns: An COSE `OKPKey` key.
     /// - Throws: `CoseError.unsupportedCurve` if the curve is not supported.
     public static func generateKey(curve: CoseCurve, optionalParams: [AnyHashable: AnyValue] = [:]) throws -> OKPKey {
-        let crv = try OKPKpCurve().valueParser!(curve) as! CoseCurve
-        
-        if crv.keyType != .ktyOKP {
-            throw CoseError.invalidKey("Invalid curve type \(crv) for key type \(OKPKey.self)")
+        if curve.keyType != .ktyOKP {
+            throw CoseError.invalidKey("Invalid curve type \(curve) for key type \(OKPKey.self)")
         }
         
         switch curve.curveType {

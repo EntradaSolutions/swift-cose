@@ -1,9 +1,11 @@
 import Foundation
+import CryptoKit
+import BigInt
+import CryptoSwift
 import _CryptoExtras
 
 public enum Padding {
-    case pkcs1_oaep
-    case pkcs1_oaep_sha256
+    case oaep
     case pkcs1v1_5
     case pss
     case pssZero
@@ -28,25 +30,42 @@ public class RsaAlgorithm: CoseAlgorithm {
     
     public func sign(key: RSAKey, data: Data) throws -> Data {
         // Construct the private key
-        _ = try _RSA.Signing.PublicKey(n: key.n!, e: key.e!)
-        let privateKey =  try _RSA.Signing.PrivateKey(
-            n: key.n!.toBytes,
-            e: key.e!.toBytes,
-            d: key.d?.toBytes ?? Data().toBytes,
-            p: key.p?.toData ?? Data(),
-            q: key.q?.toData ?? Data()
-        )
+        let privateKey: _RSA.Signing.PrivateKey
+        do{
+            privateKey =  try _RSA.Signing.PrivateKey(
+                n: key.n!,
+                e: key.e!,
+                d: key.d!,
+                p: key.p!,
+                q: key.q!
+            )
+        } catch {
+            throw CoseError.valueError("Invalid RSA key: \(error.localizedDescription)")
+        }
+        
+        // Get hash of data
+        let digest: any CryptoKit.Digest
+        switch hashFunction {
+            case .sha1:
+                digest = Insecure.SHA1.hash(data: data)
+            case .sha256:
+                digest = SHA256.hash(data: data)
+            case .sha384:
+                digest = SHA384.hash(data: data)
+            case .sha512:
+                digest = SHA512.hash(data: data)
+        }
         
         // Sign the data
         switch padding {
             case .pkcs1v1_5:
                 return try privateKey
                     .signature(
-                        for: data,
+                        for: digest,
                         padding: .insecurePKCS1v1_5
                     ).rawRepresentation
             case .pss:
-                return try privateKey.signature(for: data, padding: .PSS).rawRepresentation
+                return try privateKey.signature(for: digest, padding: .PSS).rawRepresentation
             default:
                 throw CoseError.valueError("Unsupported padding")
         }
@@ -58,18 +77,32 @@ public class RsaAlgorithm: CoseAlgorithm {
             _ = _RSA.Signing.RSASignature(rawRepresentation: signature)
             let rsaPublicKey = try _RSA.Signing.PublicKey(n: key.n!, e: key.e!)
             
+            // Get hash of data
+            let digest: any CryptoKit.Digest
+            switch hashFunction {
+                case .sha1:
+                    digest = Insecure.SHA1.hash(data: data)
+                case .sha256:
+                    digest = SHA256.hash(data: data)
+                case .sha384:
+                    digest = SHA384.hash(data: data)
+                case .sha512:
+                    digest = SHA512.hash(data: data)
+            }
+            
             // Verify the signature
             switch padding {
                 case .pkcs1v1_5:
                     return rsaPublicKey.isValidSignature(
                         _RSA.Signing.RSASignature(rawRepresentation: signature),
-                        for: data,
+                        for: digest,
                         padding: .insecurePKCS1v1_5
                     )
                 case .pss:
                     return rsaPublicKey.isValidSignature(
                         _RSA.Signing.RSASignature(rawRepresentation: signature),
-                        for: data, padding: .PSS
+                        for: digest,
+                        padding: .PSS
                     )
                 default:
                     throw CoseError.valueError("Unsupported padding")
@@ -88,22 +121,22 @@ public class RsaPss: RsaAlgorithm {
     }
 }
 
-/// RSA with OAEP padding
+/// Base class for RSA with OAEP padding
 public class RsaOaep: RsaAlgorithm {
     override public var padding: Padding {
-        return .pkcs1_oaep_sha256
+        return .oaep
     }
 
     func keyWrap(key: RSAKey, data: Data) throws -> Data {
         let rsaPublicKey = try _RSA.Encryption.PublicKey(n: key.n!, e: key.e!)
         
         switch padding {
-            case .pkcs1_oaep:
+            case .oaep:
                 return try rsaPublicKey
-                    .encrypt(data, padding: _RSA.Encryption.Padding.PKCS1_OAEP)
-            case .pkcs1_oaep_sha256:
-                return try rsaPublicKey
-                    .encrypt(data, padding: _RSA.Encryption.Padding.PKCS1_OAEP_SHA256)
+                    .encrypt(
+                        data,
+                        padding: _RSA.Encryption.Padding.PKCS1_OAEP
+                    )
             default:
                 throw CoseError.valueError("Unsupported padding")
         }
@@ -111,20 +144,25 @@ public class RsaOaep: RsaAlgorithm {
 
     func keyUnwrap(key: RSAKey, data: Data) throws -> Data {
         // Construct the private key
-        _ = try _RSA.Encryption.PublicKey(n: key.n!, e: key.e!)
-        let privateKey =  try _RSA.Encryption.PrivateKey(
-            n: key.n!.toBytes,
-            e: key.e!.toBytes,
-            d: key.d?.toBytes ?? Data().toBytes,
-            p: key.p?.toData ?? Data(),
-            q: key.q?.toData ?? Data()
-        )
+        let privateKey: _RSA.Encryption.PrivateKey
+        do{
+            privateKey =  try _RSA.Encryption.PrivateKey(
+                n: key.n!,
+                e: key.e!,
+                d: key.d!,
+                p: key.p!,
+                q: key.q!
+            )
+        } catch {
+            throw CoseError.valueError("Invalid RSA key: \(error.localizedDescription)")
+        }
         
         switch padding {
-            case .pkcs1_oaep:
-                return try privateKey.decrypt(data, padding: _RSA.Encryption.Padding.PKCS1_OAEP)
-            case .pkcs1_oaep_sha256:
-                return try privateKey.decrypt(data, padding: _RSA.Encryption.Padding.PKCS1_OAEP_SHA256)
+            case .oaep:
+                return try privateKey.decrypt(
+                    data,
+                    padding: _RSA.Encryption.Padding.PKCS1_OAEP
+                )
             default:
                 throw CoseError.valueError("Unsupported padding")
         }
@@ -140,53 +178,13 @@ public class RsaPkcs1: RsaAlgorithm {
     }
 }
 
-/// Base class for RSA OAEP algorithms
-public class RsaesOaep: RsaAlgorithm {
-    public override var padding: Padding {
-        return .pkcs1_oaep
-    }
-}
-
-/// RSAES-OAEP-SHA512
-public class RsaesOaepSha512: RsaesOaep {
+/// PS256
+public class Ps256: RsaPss {
     public init() {
         super.init(
-            identifier: .rsa_ES_OAEP_SHA512,
-            fullname: "RSAES_OAEP_SHA_512",
-            hashFunction: .sha512
-        )
-    }
-}
-
-/// RSAES-OAEP-SHA256
-public class RsaesOaepSha256: RsaesOaep {
-    public init() {
-        super.init(
-            identifier: .rsa_ES_OAEP_SHA256,
-            fullname: "RSAES_OAEP_SHA_256",
+            identifier: .ps256,
+            fullname: "PS256",
             hashFunction: .sha256
-        )
-    }
-}
-
-/// RSAES-OAEP-SHA1
-public class RsaesOaepSha1: RsaesOaep {
-    public init() {
-        super.init(
-            identifier: .rsa_ES_OAEP_SHA1,
-            fullname: "RSAES_OAEP_SHA_1",
-            hashFunction: .sha1
-        )
-    }
-}
-
-/// PS512
-public class Ps512: RsaPss {
-    public init() {
-        super.init(
-            identifier: .ps512,
-            fullname: "PS512",
-            hashFunction: .sha512
         )
     }
 }
@@ -202,13 +200,46 @@ public class Ps384: RsaPss {
     }
 }
 
-/// PS256
-public class Ps256: RsaPss {
+/// PS512
+public class Ps512: RsaPss {
     public init() {
         super.init(
-            identifier: .ps256,
-            fullname: "PS256",
+            identifier: .ps512,
+            fullname: "PS512",
+            hashFunction: .sha512
+        )
+    }
+}
+
+/// RSAES-OAEP-SHA1
+public class RsaesOaepSha1: RsaOaep {
+    public init() {
+        super.init(
+            identifier: .rsa_ES_OAEP_SHA1,
+            fullname: "RSAES_OAEP_SHA_1",
+            hashFunction: .sha1
+        )
+    }
+}
+
+/// RSAES-OAEP-SHA256
+public class RsaesOaepSha256: RsaOaep {
+    public init() {
+        super.init(
+            identifier: .rsa_ES_OAEP_SHA256,
+            fullname: "RSAES_OAEP_SHA_256",
             hashFunction: .sha256
+        )
+    }
+}
+
+/// RSAES-OAEP-SHA512
+public class RsaesOaepSha512: RsaOaep {
+    public init() {
+        super.init(
+            identifier: .rsa_ES_OAEP_SHA512,
+            fullname: "RSAES_OAEP_SHA_512",
+            hashFunction: .sha512
         )
     }
 }
@@ -224,13 +255,13 @@ public class RsaPkcs1Sha1: RsaPkcs1 {
     }
 }
 
-/// RSASSA-PKCS1-v1_5 using SHA-512
-public class RsaPkcs1Sha512: RsaPkcs1 {
+/// RSASSA-PKCS1-v1_5 using SHA-256
+public class RsaPkcs1Sha256: RsaPkcs1 {
     public init() {
         super.init(
-            identifier: .rsa_PKCS1_SHA512,
-            fullname: "RS512",
-            hashFunction: .sha512
+            identifier: .rsa_PKCS1_SHA256,
+            fullname: "RS256",
+            hashFunction: .sha256
         )
     }
 }
@@ -246,13 +277,13 @@ public class RsaPkcs1Sha384: RsaPkcs1 {
     }
 }
 
-/// RSASSA-PKCS1-v1_5 using SHA-256
-public class RsaPkcs1Sha256: RsaPkcs1 {
+/// RSASSA-PKCS1-v1_5 using SHA-512
+public class RsaPkcs1Sha512: RsaPkcs1 {
     public init() {
         super.init(
-            identifier: .rsa_PKCS1_SHA256,
-            fullname: "RS256",
-            hashFunction: .sha256
+            identifier: .rsa_PKCS1_SHA512,
+            fullname: "RS512",
+            hashFunction: .sha512
         )
     }
 }

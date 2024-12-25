@@ -2,8 +2,9 @@ import Foundation
 import UncommonCrypto
 import CryptoKit
 import K1
+import SwiftCurve448
 
-public enum CurveType {
+public enum CurveType: Int, CaseIterable, Sendable {
     case SECP256K1
     case SECP256R1
     case SECP384R1
@@ -44,7 +45,7 @@ public enum KeyType {
 }
 
 
-public enum CoseCurveIdentifier: Int, Codable, Equatable, CaseIterable {
+public enum CoseCurveIdentifier: Int, CaseIterable, Sendable {
     case reserved = 0
     case p256 = 1
     case p384 = 2
@@ -108,9 +109,9 @@ public class CoseCurve: CoseAttribute {
     /// - Returns: A specific `CoseCurve` instance.
     public static func fromId(for attribute: Any) throws -> CoseCurve {
         switch attribute {
-        case let id as Int:
+        case let id as any BinaryInteger:
             // If the identifier is an Int, convert it to CoseCurveIdentifier
-            guard let curve = CoseCurveIdentifier(rawValue: id) else {
+            guard let curve = CoseCurveIdentifier(rawValue: id as! Int) else {
                 throw CoseError.invalidCurve("Unknown curve identifier")
             }
             return getInstance(for: curve)

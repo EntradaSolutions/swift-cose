@@ -2,6 +2,7 @@ import Foundation
 import CryptoKit
 import K1
 import CryptoSwift
+import SwiftCurve448
 
 
 public func derivePublicNumbersCompact(from d: Data, curve: CurveType) -> (Data, Data?) {
@@ -51,20 +52,24 @@ public func derivePublicNumbers(from d: Data, curve: CurveType) -> (Data, Data?)
     switch curve {
         case .SECP256K1:
             let privateKey: K1.KeyAgreement.PrivateKey = derivePrivateKey(from: d, curve: curve)
-            x = privateKey.publicKey.x963Representation.subdata(in: 1..<33)
-            y = privateKey.publicKey.x963Representation.subdata(in: 33..<65)
+            let publicKeyData = privateKey.publicKey.x963Representation.dropFirst()
+            x = publicKeyData.prefix(32)
+            y = publicKeyData.suffix(32)
         case .SECP256R1:
             let privateKey: P256.KeyAgreement.PrivateKey = derivePrivateKey(from: d, curve: curve)
-            x = privateKey.publicKey.x963Representation.subdata(in: 1..<33)
-            y = privateKey.publicKey.x963Representation.subdata(in: 33..<65)
+            let publicKeyData = privateKey.publicKey.x963Representation.dropFirst()
+            x = publicKeyData.prefix(32)
+            y = publicKeyData.suffix(32)
         case .SECP384R1:
             let privateKey: P384.KeyAgreement.PrivateKey = derivePrivateKey(from: d, curve: curve)
-            x = privateKey.publicKey.x963Representation.subdata(in: 1..<49)
-            y = privateKey.publicKey.x963Representation.subdata(in: 49..<97)
+            let publicKeyData = privateKey.publicKey.x963Representation.dropFirst()
+            x = publicKeyData.prefix(48)
+            y = publicKeyData.suffix(48)
         case .SECP521R1:
             let privateKey: P521.KeyAgreement.PrivateKey = derivePrivateKey(from: d, curve: curve)
-            x = privateKey.publicKey.x963Representation.subdata(in: 1..<65)
-            y = privateKey.publicKey.x963Representation.subdata(in: 65..<129)
+            let publicKeyData = privateKey.publicKey.x963Representation.dropFirst()
+            x = publicKeyData.prefix(66)
+            y = publicKeyData.suffix(66)
         case .ED25519:
             let privateKey: Curve25519.Signing.PrivateKey = derivePrivateKey(from: d, curve: curve)
             x = privateKey.publicKey.rawRepresentation

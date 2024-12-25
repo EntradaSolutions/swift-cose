@@ -84,7 +84,7 @@ public class SignCommon: CoseMessage {
             return try alg.sign(
                 key: self.key as! EC2Key,
                 data: createSignatureStructure(detachedPayload: detachedPayload)
-            )!
+            )
         } else if let alg = alg as? RsaAlgorithm {
             return try alg.sign(
                 key: self.key as! RSAKey,

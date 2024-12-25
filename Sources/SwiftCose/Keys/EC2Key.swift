@@ -82,15 +82,7 @@ public class EC2Key: CoseKey {
             P521.Signing.PrivateKey.self,
             P521.Signing.PublicKey.self,
             P521.KeyAgreement.PrivateKey.self,
-            P521.KeyAgreement.PublicKey.self,
-//            Curve25519.Signing.PrivateKey.self,
-//            Curve25519.Signing.PublicKey.self,
-//            Curve25519.KeyAgreement.PrivateKey.self,
-//            Curve25519.KeyAgreement.PublicKey.self,
-//            Curve448.Signing.PrivateKey.self,
-//            Curve448.Signing.PublicKey.self,
-//            Curve448.KeyAgreement.PrivateKey.self,
-//            Curve448.KeyAgreement.PublicKey.self
+            P521.KeyAgreement.PublicKey.self
         ]
         
         return supportedKeyTypes.contains(where: { $0 as? any Any.Type == type(of: key) })
@@ -172,9 +164,6 @@ public class EC2Key: CoseKey {
             if let y = y, publicKeyY != y {
                 throw CoseError.invalidKey("Public Y does not match derived Y")
             }
-//            self.x = publicKeyX
-//            self.y = publicKeyY ?? nil
-//            self.d = d!
         }
         
         if x != nil && y == nil {
@@ -227,10 +216,8 @@ public class EC2Key: CoseKey {
     ///   - optionalParams: Optional key attributes for the :class:`EC2Key` object, e.g., `KpAlg` or `KpKid`.
     /// - Returns: An COSE `EC2Key` key.
     static func generateKey(curve: CoseCurve, optionalParams: [AnyHashable: AnyValue] = [:]) throws -> EC2Key {
-        let crv = try EC2KpCurve().valueParser!(curve) as! CoseCurve
-        
-        if crv.keyType != .ktyEC2 {
-            throw CoseError.invalidKey("Invalid curve type \(crv) for key type \(EC2Key.self)")
+        if curve.keyType != .ktyEC2 {
+            throw CoseError.invalidKey("Invalid curve type \(curve) for key type \(EC2Key.self)")
         }
         
         switch curve.curveType {
@@ -246,12 +233,6 @@ public class EC2Key: CoseKey {
             case .SECP521R1:
                 let privateKey:P521.KeyAgreement.PrivateKey = generatePrivateKey(curve: curve.curveType!)
                 return try EC2Key.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
-//            case .ED25519, .X25519:
-//                let privateKey = Curve25519.KeyAgreement.PrivateKey()
-//                return try EC2Key.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
-//            case .ED448, .X448:
-//                let privateKey = Curve448.KeyAgreement.PrivateKey()
-//                return try EC2Key.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
             default:
                 throw CoseError.invalidCurve("Invalid curve type")
         }
@@ -265,7 +246,7 @@ public class EC2Key: CoseKey {
     /// - Returns: An initialized `EC2Key` object.
     public static func fromCryptographyKey(
         extKey: Any,
-        optionalParams: [AnyHashable: AnyValue] = [:]
+        optionalParams: [AnyHashable: Any] = [:]
     ) throws -> EC2Key {
         guard EC2Key.supportsCryptographyKeyType(extKey) else {
             throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
@@ -274,85 +255,80 @@ public class EC2Key: CoseKey {
         var x: Data?
         var y: Data?
         var d: Data?
-        var curve: CurveType?
-
+        var curveType: CurveType?
+        
         if let privateKey = extKey as? K1.KeyAgreement.PrivateKey {
-            curve = .SECP256K1
+            curveType = .SECP256K1
             let publicKey = privateKey.publicKey
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(32)
+            y = keyData.suffix(32)
+            d = privateKey.rawRepresentation
+        } else if let privateKey = extKey as? P256.KeyAgreement.PrivateKey {
+            curveType = .SECP256R1
+            let publicKey = privateKey.publicKey
+            let keyData = publicKey.x963Representation.dropFirst()  // Drop prefix (0x04)
+            x = keyData.prefix(32)  // First 32 bytes
+            y = keyData.suffix(32)  // Remaining 32 bytes
+            d = privateKey.rawRepresentation
+        } else if let privateKey = extKey as? P384.KeyAgreement.PrivateKey {
+            curveType = .SECP384R1
+            let publicKey = privateKey.publicKey
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(48)  // First 48 bytes
+            y = keyData.suffix(48)  // Remaining 48 bytes
+            d = privateKey.rawRepresentation
+        } else if let privateKey = extKey as? P521.KeyAgreement.PrivateKey {
+            curveType = .SECP521R1
+            let publicKey = privateKey.publicKey
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(66)  // First 66 bytes
+            y = keyData.suffix(66)  // Remaining 66 bytes
             d = privateKey.rawRepresentation
         } else if let publicKey = extKey as? K1.KeyAgreement.PublicKey {
-            curve = .SECP256K1
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-        } else if let privateKey = extKey as? P256.KeyAgreement.PrivateKey {
-            curve = .SECP256R1
-            let publicKey = privateKey.publicKey
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? P256.KeyAgreement.PublicKey {
-            curve = .SECP256R1
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-        } else if let privateKey = extKey as? P384.KeyAgreement.PrivateKey {
-            curve = .SECP384R1
-            let publicKey = privateKey.publicKey
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-            d = privateKey.rawRepresentation
+            curveType = .SECP256K1
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(32)
+            y = keyData.suffix(32)
+        }  else if let publicKey = extKey as? P256.KeyAgreement.PublicKey {
+            curveType = .SECP256R1
+            let keyData = publicKey.x963Representation.dropFirst()  // Drop prefix (0x04)
+            x = keyData.prefix(32)  // First 32 bytes
+            y = keyData.suffix(32)  // Remaining 32 bytes
         } else if let publicKey = extKey as? P384.KeyAgreement.PublicKey {
-            curve = .SECP384R1
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-        } else if let privateKey = extKey as? P521.KeyAgreement.PrivateKey {
-            curve = .SECP521R1
-            let publicKey = privateKey.publicKey
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-            d = privateKey.rawRepresentation
+            curveType = .SECP384R1
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(48)  // First 48 bytes
+            y = keyData.suffix(48)  // Remaining 48 bytes
         } else if let publicKey = extKey as? P521.KeyAgreement.PublicKey {
-            curve = .SECP521R1
-            x = publicKey.x963Representation
-            y = publicKey.x963Representation
-        } else if let privateKey = extKey as? Curve25519.KeyAgreement.PrivateKey {
-            curve = .X25519
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve25519.KeyAgreement.PublicKey {
-            curve = .X25519
-            x = publicKey.rawRepresentation
-        } else if let privateKey = extKey as? Curve448.KeyAgreement.PrivateKey {
-            curve = .X448
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve448.KeyAgreement.PublicKey {
-            curve = .X448
-            x = publicKey.rawRepresentation
+            curveType = .SECP521R1
+            let keyData = publicKey.x963Representation.dropFirst()
+            x = keyData.prefix(66)  // First 66 bytes
+            y = keyData.suffix(66)  // Remaining 66 bytes
         } else {
             throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
         }
         
-        var curves: [AnyHashable: Any] = [:]
+        var curves: [CurveType: CoseCurve] = [:]
         for identifier in CoseCurveIdentifier.allCases {
             let coseCurve = try CoseCurve.fromId(for: identifier)
             if coseCurve.keyType == .ktyEC2 {
-                curves[coseCurve.curveType] = coseCurve
+                curves[coseCurve.curveType!] = coseCurve
             }
         }
         
-        if !curves.keys.contains(curve!) {
-            throw CoseError.invalidCurve("Unsupported EC Curve: \(type(of: curve))")
+        if !curves.keys.contains(curveType!) {
+            throw CoseError.invalidCurve("Unsupported EC Curve: \(type(of: curveType))")
         }
         
-        var coseKey: [AnyHashable: AnyValue] = curves[curve!] as! [AnyHashable : AnyValue]
+        var coseKey: [AnyHashable: Any] = [:]
 
-        if let x = x { coseKey[EC2KpX()] = AnyValue.data(x) }
-        if let y = y { coseKey[EC2KpY()] = AnyValue.data(y) }
-        if let d = d { coseKey[EC2KpD()] = AnyValue.data(d) }
+        if let curveType = curveType {
+            coseKey[EC2KpCurve()] = curves[curveType]!.identifier
+        }
+        if let x = x { coseKey[EC2KpX()] = x }
+        if let y = y { coseKey[EC2KpY()] = y }
+        if let d = d { coseKey[EC2KpD()] = d }
 
         // Merge optional params
         for (key, value) in optionalParams {

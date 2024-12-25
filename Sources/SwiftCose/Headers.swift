@@ -5,7 +5,7 @@ public struct Headers {
     public var unprotected: Dictionary<AnyHashable, Any>
 }
 
-public enum CoseHeaderIdentifier: Int, Codable {
+public enum CoseHeaderIdentifier: Int, CaseIterable, Sendable {
     case reserved = 0
     case algorithm = 1
     case critical = 2

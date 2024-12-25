@@ -23,13 +23,10 @@ let package = Package(
         .package(url: "https://github.com/tesseract-one/UncommonCrypto.swift.git",
                  .upToNextMinor(from: "0.2.1")),
         .package(url: "https://github.com/apple/swift-certificates.git", from: "1.6.1"),
-        // For `X448` support
-        .package(url: "https://github.com/krzyzanowskim/OpenSSL.git", .upToNextMinor(from: "1.1.180")),
-        // For `secp256k1` support
+        .package(url: "https://github.com/krzyzanowskim/OpenSSL-Package.git", .upToNextMinor(from: "3.3.2000")),
         .package(url: "https://github.com/Sajjon/K1.git", from: "0.3.9"),
-//        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMinor(from: "0.18.0")),
-        // For `AES_CBC_HMAC_SHA2`, `PBES2` and RSA DER encoding support
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.8.3"))
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.8.3")),
+        .package(url: "https://github.com/Kingpin-Apps/swift-curve448.git", from: "0.1.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -41,10 +38,11 @@ let package = Package(
                 .product(name: "Digest", package: "digest"),
                 .product(name: "UncommonCrypto", package: "UncommonCrypto.swift"),
                 .product(name: "X509", package: "swift-certificates"),
-                "OpenSSL",
+                .product(name: "OpenSSL", package: "OpenSSL-Package"),
                 .product(name: "K1", package: "k1"),
-//                .product(name: "secp256k1", package: "secp256k1.swift"),
-                "CryptoSwift"
+                .product(name: "SwiftCurve448", package: "swift-curve448"),
+                "CryptoSwift",
+
             ]
         ),
         .testTarget(

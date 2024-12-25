@@ -26,31 +26,35 @@ public class AesMacAlgorithm: CoseAlgorithm {
             paddedData.append(0)
         }
         
-        let initializationVector = Data(repeating: 0, count: blockSize)
+        let cbc = CBC(iv: Data(repeating: 0, count: blockSize).toBytes)
 
         let aes = try! AES(
             key: key.k.toBytes,
-            blockMode:
-                CBC(iv: initializationVector.toBytes),
-            padding: .noPadding
+            blockMode: cbc
         )
-        let encrypted = try! aes.encrypt(data.toBytes)
+        var encryptor = try aes.makeEncryptor()
         
-        let ciphertext = encrypted
+        do {
+            var ciphertext = Array<UInt8>()
+            ciphertext += try encryptor.update(withBytes: data.toBytes)
+            ciphertext += try encryptor.finish()
 
-        if digestLength == 16 {
-            return Data(ciphertext.suffix(16))
-        } else {
-            return Data(ciphertext.dropLast(8).suffix(8))
+            if digestLength == 16 {
+                return Data(ciphertext.suffix(16))
+            } else {
+                return Data(ciphertext.dropLast(8).suffix(8))
+            }
+        } catch {
+            throw CoseError.genericError("Compute Tag failed: \(error.localizedDescription)")
         }
     }
 
-    public func verifyTag(key: CoseSymmetricKey, tag: Data, data: Data) -> Bool {
+    public func verifyTag(key: CoseSymmetricKey, tag: Data, data: Data) throws -> Bool {
         do {
             let computedTag = try computeTag(key: key, data: data)
             return computedTag == tag
         } catch {
-            return false
+            throw CoseError.genericError("Verify Tag failed: \(error.localizedDescription)")
         }
     }
 }

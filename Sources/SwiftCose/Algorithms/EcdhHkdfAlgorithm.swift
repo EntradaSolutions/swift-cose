@@ -56,18 +56,6 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
                 
                 let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
                 return sharedSecret.withUnsafeBytes { Data($0) }
-            case .X25519:
-                let privateKeyData = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: dValue)
-                let publicKeyData = try Curve25519.KeyAgreement.PublicKey(x963Representation: x963Representation)
-                
-                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
-                return sharedSecret.withUnsafeBytes { Data($0) }
-            case .X448:
-                let privateKeyData = try Curve448.KeyAgreement.PrivateKey(rawRepresentation: dValue)
-                let publicKeyData = try Curve448.KeyAgreement.PublicKey(x963Representation: x963Representation)
-                
-                let sharedSecret = try privateKeyData.sharedSecretFromKeyAgreement(with: publicKeyData)
-                return sharedSecret.withUnsafeBytes { Data($0) }
             default:
                 throw CoseError.invalidAlgorithm("Unsupported curve")
         }
@@ -95,10 +83,6 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
         }
         return hkdf.withUnsafeBytes { Data($0) }
     }
-    
-//    public func keyLength() -> Int {
-//        return self.keyWrapFunction.keyLength()
-//    }
 }
 
 /// ECDH ES w/ Concat KDF and AES Key Wrap w/ 128-bit key

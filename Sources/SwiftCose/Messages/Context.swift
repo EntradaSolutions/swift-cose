@@ -10,7 +10,7 @@ public struct PartyInfo {
 
     func encode() -> [CBOR] {
         return [
-            identity!.toCBOR,
+            identity?.toCBOR ?? CBOR.null,
             nonce?.toCBOR ?? CBOR.null,
             other?.toCBOR ?? CBOR.null
         ]
