@@ -8,7 +8,9 @@ public class CoseKey: CustomStringConvertible {
     
     // MARK: - Abstract Properties
     public var description: String {
-        fatalError("Must be overridden in subclass.")
+        let keyRepresentation = keyRepr()
+
+        return "<COSE_Key: \(keyRepresentation)>"
     }
 
     // MARK: - Properties
@@ -93,6 +95,13 @@ public class CoseKey: CustomStringConvertible {
                // If the identifier is already a KeyTypeIdentifier, get the instance directly
                return getInstance(for: type)
 
+           case let attr as CoseAttribute:
+               // If the identifier is a String, attempt to match it to a KeyTypeIdentifier
+               guard let type = KeyTypeIdentifier(rawValue: attr.identifier) else {
+                   throw CoseError.invalidKeyType("Unknown type fullname")
+               }
+               return getInstance(for: type)
+
            default:
                throw CoseError.invalidKeyType("Unsupported identifier type. Must be Int, String, or KeyTypeIdentifier")
        }
@@ -104,7 +113,7 @@ public class CoseKey: CustomStringConvertible {
     public static func getInstance(for identifier: KeyTypeIdentifier) -> CoseKey.Type {
         switch identifier {
             case .reserved:
-                return CoseKey.self
+                return ReservedKey.self
             case .okp:
                 return OKPKey.self
             case .ec2:
@@ -148,6 +157,8 @@ public class CoseKey: CustomStringConvertible {
                 key = CBOR(stringKey)
             } else if let intKey = entry.key as? Int {
                 key = CBOR(intKey)
+            } else if let coseAttr = entry.key as? CoseAttribute {
+                key = CBOR(coseAttr.identifier)
             } else {
                 throw CoseError.invalidKeyType("Unsupported key type: \(type(of: entry.key))")
             }
@@ -156,6 +167,10 @@ public class CoseKey: CustomStringConvertible {
                 value = CBOR(stringValue)
             } else if let intValue = entry.value as? Int {
                 value = CBOR(intValue)
+            } else if let coseAttr = entry.value as? CoseAttribute {
+                value = CBOR(coseAttr.identifier)
+            } else if let data = entry.value as? Data {
+                value = CBOR(data)
             } else {
                 throw CoseError.invalidKeyType("Unsupported value type: \(type(of: entry.value))")
             }
@@ -170,11 +185,27 @@ public class CoseKey: CustomStringConvertible {
     /// - Parameter received: A CBOR-encoded bytestring.
     /// - Returns: An initialized COSE key.
     public static func decode(_ received: Data) throws -> CoseKey? {
-        let cbor1 = try CBORSerialization.cbor(from: received)
-        let mapValue = cbor1.mapValue ?? [:]
-        let dict = mapValue.reduce(into: [AnyHashable: Any]()) { result, entry in
-            let key = entry.key.unwrapped as? AnyHashable ?? "" as AnyHashable
-            let value = entry.value.unwrapped
+        let cbor = try CBORSerialization.cbor(from: received)
+        let mapValue = cbor.mapValue ?? [:]
+        let dict = try mapValue.reduce(into: [AnyHashable: Any]()) { result, entry in
+            
+            var key: KeyParam
+//            let key = try KeyParam.fromId(for: entry.key.unwrapped!)
+            
+            let k = entry.key.unwrapped!
+            let v = entry.value.unwrapped!
+            
+            if let intKey = k as? UInt64 {
+                key = try KeyParam.fromId(for: intKey)
+            } else if let stringKey = k as? String {
+                key = try KeyParam.fromId(for: stringKey)
+            } else {
+                key = k as! KeyParam
+            }
+            
+            let value = try key.valueParser!(v)
+//            let key = entry.key.unwrapped as? AnyHashable ?? "" as AnyHashable
+//            let value = entry.value.unwrapped
             result[key] = value
         }
         return try fromDictionary(dict)
@@ -186,8 +217,13 @@ public class CoseKey: CustomStringConvertible {
     public class func fromDictionary(_ received: [AnyHashable: Any]) throws -> CoseKey {
         // Attempt to initialize a COSE key from the dictionary
         let kpKty = KpKty()
-        let keyTypeClass = try fromId(for: received[kpKty]!)
-        return try keyTypeClass.fromDictionary(received)
+        
+        do {
+            let keyTypeClass = try fromId(for: received[kpKty] as Any)
+            return try keyTypeClass.fromDictionary(received)
+        } catch {
+            throw CoseError.invalidKeyType("Failed to determine key type. \(error.localizedDescription)")
+        }
     }
     
     /// Initializes a COSE key from a PEM-encoded private key.
@@ -275,26 +311,36 @@ public class CoseKey: CustomStringConvertible {
     // Subscript for getting values
     public subscript(key: Any) -> Any? {
         get {
+            if let key = key as? KeyParam {
+                return store[key]
+            }
             return store[keyTransform(key)]
         }
         set {
-            store[keyTransform(key)] = newValue
+            if let key = key as? KeyParam {
+                store[key] = newValue
+            } else {
+                store[keyTransform(key)] = newValue
+            }
         }
     }
     
     // Deletion method
     public func removeItem(forKey key: Any) {
-        store.removeValue(forKey: keyTransform(key))
+        if let key = key as? KeyParam {
+            store.removeValue(forKey: key)
+        } else {
+            store.removeValue(forKey: keyTransform(key))
+        }
     }
     
     // Contains method
     public func contains(_ key: Any) -> Bool {
-        return store.keys.contains(keyTransform(key))
-    }
-    
-    // Iteration method similar
-    public func iterator() -> Dictionary<AnyHashable, Any>.Iterator {
-        return store.makeIterator()
+        if let key = key as? KeyParam {
+            return store.keys.contains(key)
+        } else {
+            return store.keys.contains(keyTransform(key))
+        }
     }
     
     // Length method
@@ -406,5 +452,21 @@ public class CoseKey: CustomStringConvertible {
         } catch {
             return nil
         }
+    }
+}
+
+public class ReservedKey: CoseKey {
+    /// Returns an initialized COSE Key object of type ReservedKey.
+    /// - Parameter coseKey: Dict containing COSE Key parameters and their values.
+    /// - Returns: An initialized ReservedKey key
+    public override class func fromDictionary(_ coseKey: [AnyHashable: Any]) throws -> ReservedKey {
+        return ReservedKey(keyDict: coseKey)
+    }
+    
+    // Custom description for the object
+    public override var description: String {
+        let keyRepresentation = keyRepr()
+
+        return "<COSE_Key(ReservedKey): \(keyRepresentation)>"
     }
 }

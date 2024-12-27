@@ -9,7 +9,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "89F52F65A1C580933B5261A72F".hexStringToData!
+        let iv = "89F52F65A1C580933B5261A72F".hexStringToData
         let plaintext = "This is the content.".data(using: .utf8)!
         let aad = "AAD".data(using: .utf8)!
         
@@ -34,7 +34,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "1234567890ABCDEF12345678".hexStringToData!
+        let iv = "1234567890ABCDEF12345678".hexStringToData
         let plaintext = "CCM 256-bit key test.".data(using: .utf8)!
         let aad = "AAD".data(using: .utf8)!
         
@@ -59,7 +59,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "A1B2C3D4E5F6071829304050".hexStringToData!
+        let iv = "A1B2C3D4E5F6071829304050".hexStringToData
         let plaintext = "AES CCM 64 64 128 test.".data(using: .utf8)!
         let aad = "AAD6464128".data(using: .utf8)!
         
@@ -84,7 +84,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "0011AABBCCDDEEFF99887766".hexStringToData!
+        let iv = "0011AABBCCDDEEFF99887766".hexStringToData
         let plaintext = "AES CCM 64 64 256 test.".data(using: .utf8)!
         let aad = "AAD6464256".data(using: .utf8)!
         
@@ -109,7 +109,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "DEADBEEFCAFEBABE11223344".hexStringToData!
+        let iv = "DEADBEEFCAFEBABE11223344".hexStringToData
         let plaintext = "AES CCM 16 128 128 test.".data(using: .utf8)!
         let aad = "AAD16128128".data(using: .utf8)!
         
@@ -134,7 +134,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "CAFED00DBEEF001122334455".hexStringToData!
+        let iv = "CAFED00DBEEF001122334455".hexStringToData
         let plaintext = "AES CCM 16 128 256 test.".data(using: .utf8)!
         let aad = "AAD16128256".data(using: .utf8)!
         
@@ -159,7 +159,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "33445566778899AABBCCDDEE".hexStringToData!
+        let iv = "33445566778899AABBCCDDEE".hexStringToData
         let plaintext = "AES CCM 64 128 128 test.".data(using: .utf8)!
         let aad = "AAD64128128".data(using: .utf8)!
         
@@ -184,7 +184,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "112233445566778899AABBCC".hexStringToData!
+        let iv = "112233445566778899AABBCC".hexStringToData
         let plaintext = "AES CCM 64 128 256 test.".data(using: .utf8)!
         let aad = "AAD64128256".data(using: .utf8)!
         
@@ -209,7 +209,7 @@ struct AesCcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesCcm.keyLength!
         )
-        let iv = "".hexStringToData!  // Empty IV to induce failure
+        let iv = "".hexStringToData  // Empty IV to induce failure
         let plaintext = "Failure case test".data(using: .utf8)!
         let aad = "FailureAAD".data(using: .utf8)!
         

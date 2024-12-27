@@ -22,6 +22,13 @@ struct EcdhHkdfAlgorithmTests {
         .secp256k1
     ])
     func testEcdhHkdfAlgorithms(_ algId: CoseAlgorithmIdentifier, _ curveId: CoseCurveIdentifier) async throws {
+//        let size: Int
+//        if curveId == .p521 {
+//            size = 66
+//        }  else {
+//            size = 32
+//        }
+        
         let curve = try CoseCurve.fromId(for: curveId)
             
         let privateKey = try EC2Key.generateKey(curve: curve)
@@ -43,7 +50,7 @@ struct EcdhHkdfAlgorithmTests {
         
         #expect(
             derivedKey.count == 32,
-            "Derived key length should be \(curve.size) bytes."
+            "Derived key length should be \(32) bytes."
         )
     }
 }

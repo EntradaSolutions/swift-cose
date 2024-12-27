@@ -13,32 +13,10 @@ public enum CurveType: Int, CaseIterable, Sendable {
     case ED448
     case X25519
     case X448
-    
-    /// Generic method to get the curve string based on type
-    public func getCurve<T>() -> T? {
-        switch self {
-            case .SECP256K1:
-                return K1.self as? T
-            case .SECP256R1:
-                return P256.self as? T
-            case .SECP384R1:
-                return P384.self as? T
-            case .SECP521R1:
-                return P521.self as? T
-            case .ED25519:
-                return Curve25519.self as? T
-            case .ED448:
-                return Curve448.self as? T
-            case .X25519:
-                return Curve25519.self as? T
-            case .X448:
-                return Curve448.self as? T
-        }
-    }
 }
 
 
-public enum KeyType {
+public enum KeyType: Int, CaseIterable, Sendable {
     case ktyEC2
     case ktyOKP
     case none

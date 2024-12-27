@@ -47,7 +47,10 @@ let package = Package(
         ),
         .testTarget(
             name: "SwiftCoseTests",
-            dependencies: ["SwiftCose"]
+            dependencies: ["SwiftCose"],
+            resources: [
+               .copy("data")
+           ]
         ),
     ]
 )

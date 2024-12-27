@@ -109,8 +109,7 @@ extension Array where Element == UInt8 {
 
 // MARK: - String Extensions
 extension String {
-    var hexStringToData: Data? {
-        var data = Data()
+    var hexStringToData: Data {
         var tempHex = self
         
         // Ensure string length is even
@@ -118,19 +117,20 @@ extension String {
             tempHex = "0" + tempHex
         }
         
-        // Iterate through the string in pairs of two
-        var index = tempHex.startIndex
-        while index < tempHex.endIndex {
-            let nextIndex = tempHex.index(index, offsetBy: 2)
-            let byteString = tempHex[index..<nextIndex]
+        let cleanHex = tempHex.replacingOccurrences(of: " ", with: "").replacingOccurrences(of: "\n", with: "")
+        var bytes = [UInt8]()
+        var currentIndex = cleanHex.startIndex
+        
+        while currentIndex < cleanHex.endIndex {
+            let nextIndex = cleanHex.index(currentIndex, offsetBy: 2, limitedBy: cleanHex.endIndex) ?? cleanHex.endIndex
+            let byteString = String(cleanHex[currentIndex..<nextIndex])
             if let byte = UInt8(byteString, radix: 16) {
-                data.append(byte)
-            } else {
-                return nil // Invalid hex string
+                bytes.append(byte)
             }
-            index = nextIndex
+            currentIndex = nextIndex
         }
-        return data
+        
+        return Data(bytes)
     }
 }
 

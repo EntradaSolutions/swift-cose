@@ -40,11 +40,10 @@ func toBstr(_ dec: BigUInteger) -> Data {
 /// Base class for COSE attributes
 public class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomDebugStringConvertible {
     
-    
-    enum CodingKeys: String, CodingKey {
-        case identifier
-        case fullname
-    }
+//    enum CodingKeys: String, CodingKey {
+//        case identifier
+//        case fullname
+//    }
     
     public var debugDescription: String {
         return description
@@ -103,8 +102,8 @@ public class CoseAttribute: Comparable, Hashable, CustomStringConvertible, Custo
         return value
     }
     
-    // MARK: - Codable Protocol
-//    public init(from decoder: Decoder) throws {
+//    // MARK: - Codable Protocol
+//    required public init(from decoder: Decoder) throws {
 //        let container = try decoder.container(keyedBy: CodingKeys.self)
 //        self.identifier = try container.decode(Int.self, forKey: .identifier)
 //        self.fullname = try container.decode(String.self, forKey: .fullname)

@@ -48,6 +48,15 @@ public class KTY: CoseAttribute {
                    throw CoseError.invalidKeyType("Unknown type identifier")
                }
                return getInstance(for: type)
+           case let id as UInt64:
+               // Ensure UInt64 fits within Int bounds
+               guard id <= UInt64(Int.max) else {
+                   throw CoseError.invalidKeyType("UInt64 value exceeds Int max limit")
+               }
+               guard let type = KeyTypeIdentifier(rawValue: Int(id)) else {
+                   throw CoseError.invalidKeyType("Unknown type identifier")
+               }
+               return getInstance(for: type)
 
            case let name as String:
                // If the identifier is a String, attempt to match it to a KeyTypeIdentifier

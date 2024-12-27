@@ -9,7 +9,7 @@ struct AesGcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesGcm.keyLength!
         )
-        let iv = "DDDC08972DF9BE62855291A1".hexStringToData!
+        let iv = "DDDC08972DF9BE62855291A1".hexStringToData
         let plaintext = "This is the content.".data(using: .utf8)!
         let aad = "".data(using: .utf8)!
         
@@ -34,7 +34,7 @@ struct AesGcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesGcm.keyLength!
         )
-        let iv = "DDDC08972DF9BE62855291A1".hexStringToData!
+        let iv = "DDDC08972DF9BE62855291A1".hexStringToData
         let plaintext = "This is the content.".data(using: .utf8)!
         let aad = "".data(using: .utf8)!
         
@@ -59,7 +59,7 @@ struct AesGcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesGcm.keyLength!
         )
-        let iv = "DDDC08972DF9BE62855291A1".hexStringToData!
+        let iv = "DDDC08972DF9BE62855291A1".hexStringToData
         let plaintext = "This is the content.".data(using: .utf8)!
         let aad = "".data(using: .utf8)!
         
@@ -84,15 +84,15 @@ struct AesGcmAlgorithmTests {
         let key = try CoseSymmetricKey.generateKey(
             keyLength: aesGcm.keyLength!
         )
-        let iv = "".hexStringToData!
-        let plaintext = "This is the content.".data(using: .utf8)!
+        let iv = "".hexStringToData
+        let plaintext = "This is the content.".data(using: .utf8)
         let aad = "".data(using: .utf8)!
         
         #expect(throws: CoseError.self) {
             try aesGcm.encrypt(
                 key: key,
                 nonce: iv,
-                data: plaintext,
+                data: plaintext!,
                 aad: aad
             )
         }
@@ -101,7 +101,7 @@ struct AesGcmAlgorithmTests {
             try aesGcm.decrypt(
                 key: key,
                 nonce: iv,
-                ciphertext: plaintext,
+                ciphertext: plaintext!,
                 aad: aad
             )
         }

@@ -133,7 +133,7 @@ public class EncCommon: CoseMessage {
             }
             
             // Perform the XOR operation between PartialIV and BaseIV
-            let partialIVInt = partialIV.hexStringToData!.reduce(0) {
+            let partialIVInt = partialIV.hexStringToData.reduce(0) {
                 ($0 << 8) | Int($1)
             }
             let baseIVInt = baseIV.reduce(0) { ($0 << 8) | Int($1) }
@@ -148,6 +148,6 @@ public class EncCommon: CoseMessage {
             throw CoseError.invalidIV("No IV found")
         }
         
-        return nonce!.hexStringToData!
+        return nonce!.hexStringToData
     }
 }

@@ -139,6 +139,19 @@ public class CoseAlgorithm: CoseAttribute {
     ) {
         super.init(identifier: identifier.rawValue, fullname: fullname, valueParser: valueParser)
     }
+    
+    // MARK: - Codable Protocol
+//    required public init(from decoder: Decoder) throws {
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        self.identifier = try container.decode(Int.self, forKey: .identifier)
+//        self.fullname = try container.decode(String.self, forKey: .fullname)
+//    }
+    
+//    public func encode(to encoder: Encoder) throws {
+//        var container = encoder.container(keyedBy: CodingKeys.self)
+//        try container.encode(identifier, forKey: .identifier)
+////        try container.encode(fullname, forKey: .fullname)
+//    }
 
     public static func fromId(for attribute: Any) throws -> CoseAlgorithm {
         switch attribute {
@@ -148,6 +161,16 @@ public class CoseAlgorithm: CoseAttribute {
                     throw CoseError.invalidAlgorithm("Unknown algorithm identifier")
                 }
                 return getInstance(for: alg)
+                
+            case let id as Int64:
+                // Ensure UInt64 fits within Int bounds
+                guard id <= Int64(Int.max) else {
+                    throw CoseError.invalidKeyType("UInt64 value exceeds Int max limit")
+                }
+                guard let type = CoseAlgorithmIdentifier(rawValue: Int(id)) else {
+                    throw CoseError.invalidKeyType("Unknown algorithm identifier")
+                }
+                return getInstance(for: type)
                 
             case let name as String:
                 // If the identifier is a String, attempt to match it to a CoseAlgorithmIdentifier

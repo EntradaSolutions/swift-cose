@@ -246,16 +246,18 @@ public class OKPKey: CoseKey {
         
         switch curve.curveType {
             case .ED25519:
-                let privateKey: Curve25519.Signing.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                let privateKey: Curve25519.Signing.PrivateKey = try generateSigningPrivateKey(
+                    curve: curve.curveType!
+                )
                 return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
             case .ED448:
-                let privateKey: Curve448.Signing.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                let privateKey: Curve448.Signing.PrivateKey = try generateSigningPrivateKey(curve: curve.curveType!)
                 return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
             case .X25519:
-                let privateKey: Curve25519.KeyAgreement.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                let privateKey: Curve25519.KeyAgreement.PrivateKey = try generateKeyAgreementPrivateKey(curve: curve.curveType!)
                 return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
             case .X448:
-                let privateKey: Curve448.KeyAgreement.PrivateKey = generatePrivateKey(curve: curve.curveType!)
+                let privateKey: Curve448.KeyAgreement.PrivateKey = try generateKeyAgreementPrivateKey(curve: curve.curveType!)
                 return try OKPKey.fromCryptographyKey(extKey: privateKey, optionalParams: optionalParams)
             default:
                 throw CoseError.invalidCurve("Invalid curve type")

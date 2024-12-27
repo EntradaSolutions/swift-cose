@@ -8,13 +8,13 @@ import X509
 public class X5Bag {
     public var certificates: Data
 
-    public init(certificates: Any) {
+    public init(certificates: Any) throws {
         if let certArray = certificates as? [Data], certArray.count == 1 {
             self.certificates = certArray[0]
         } else if let certData = certificates as? Data {
             self.certificates = certData
         } else {
-            fatalError("Invalid certificate format")
+            throw CoseError.invalidCertificate("Invalid certificate data")
         }
     }
 
@@ -42,7 +42,7 @@ public class X5T: Equatable {
     public static func fromCertificate(alg: HashAlgorithm, certificate: Data, cborEncoded: Bool = false) throws -> X5T {
         var certData = certificate
         if cborEncoded {
-            let cbor = try CBORSerialization.cbor(from: certificate)
+            let cbor = CBOR(certificate)
             certData = cbor.bytesStringValue!
         }
         let hash = try alg.computeHash(data: certData)
@@ -62,8 +62,11 @@ public class X5T: Equatable {
         )
     }
 
-    public func encode() -> [Any] {
-        return [alg.hashAlgorithm.rawValue, thumbprint!]
+    public func encode() -> CBOR {
+        return CBOR.array([
+            CBOR(integerLiteral: alg.hashAlgorithm.rawValue),
+            CBOR.byteString(thumbprint!)
+        ])
     }
 
     public func matches(certificate: Data, cborEncoded: Bool = false) throws -> Bool {
@@ -104,14 +107,14 @@ public class X5Chain {
         do {
             self.certChain = try Certificate(derEncoded: certData.toBytes)
         } catch {
-            throw CoseError.invalidCertificate("Invalid certificate data")
+            throw CoseError.invalidCertificate("Invalid certificate data: \(error.localizedDescription)")
         }
 
         if verify {
             do {
                 let _ = try verifyChain(keyUsage: ["digital_signature"])
             } catch {
-                fatalError("Certificate verification failed: \(error)")
+                throw CoseError.invalidCertificate("Certificate verification failed: \(error)")
             }
         }
     }

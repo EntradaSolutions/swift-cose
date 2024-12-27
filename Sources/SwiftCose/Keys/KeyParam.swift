@@ -55,6 +55,15 @@ public class KeyParam: CoseAttribute {
                 throw CoseError.invalidKeyType("Unknown KeyParam identifier")
             }
             return getInstance(for: keyType)
+        case let id as UInt64:
+            // Ensure UInt64 fits within Int bounds
+            guard id <= UInt64(Int.max) else {
+                throw CoseError.invalidKeyType("UInt64 value exceeds Int max limit")
+            }
+            guard let type = KeyParamIdentifier(rawValue: Int(id)) else {
+                throw CoseError.invalidKeyType("Unknown KeyParam identifier")
+            }
+            return getInstance(for: type)
                 
         case let name as String:
             // If the identifier is a String, attempt to match it to a KeyParamIdentifier

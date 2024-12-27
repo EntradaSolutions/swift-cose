@@ -22,7 +22,7 @@ struct HashAlgorithmsTests {
         let hashAlgorithm = Sha1()
         
         let hash = try hashAlgorithm.computeHash(data: data)
-        let expectedHash = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3".hexStringToData!
+        let expectedHash = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3".hexStringToData
         
         #expect(hash == expectedHash, "SHA-1 hash does not match expected value.")
     }
@@ -52,7 +52,7 @@ struct HashAlgorithmsTests {
         let hashAlgorithm = Sha384()
         
         let hash = try hashAlgorithm.computeHash(data: data)
-        let expectedHash = "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd".hexStringToData!
+        let expectedHash = "e516dabb23b6e30026863543282780a3ae0dccf05551cf0295178d7ff0f1b41eecb9db3ff219007c4e097260d58621bd".hexStringToData
         
         #expect(hash == expectedHash, "SHA-384 hash does not match expected value.")
     }
@@ -62,7 +62,7 @@ struct HashAlgorithmsTests {
         let hashAlgorithm = Sha512()
         
         let hash = try hashAlgorithm.computeHash(data: data)
-        let expectedHash = "9ece086e9bac491fac5c1d1046ca11d737b92a2b2ebd93f005d7b710110c0a678288166e7fbe796883a4f2e9b3ca9f484f521d0ce464345cc1aec96779149c14".hexStringToData!
+        let expectedHash = "9ece086e9bac491fac5c1d1046ca11d737b92a2b2ebd93f005d7b710110c0a678288166e7fbe796883a4f2e9b3ca9f484f521d0ce464345cc1aec96779149c14".hexStringToData
         
         #expect(hash == expectedHash, "SHA-512 hash does not match expected value.")
     }
@@ -88,7 +88,7 @@ struct HashAlgorithmsTests {
         let hashAlgorithm = Shake128()
         
         let hash = try hashAlgorithm.computeHash(data: data)
-        let expectedHash = "d3b0aa9cd8b7255622cebc631e867d4093d6f6010191a53973c45fec9b07c774".hexStringToData!
+        let expectedHash = "d3b0aa9cd8b7255622cebc631e867d4093d6f6010191a53973c45fec9b07c774".hexStringToData
         
         #expect(hash.count == 256 / 8, "SHAKE-128 hash length does not match expected value.")
         #expect(hash == expectedHash, "SHAKE-128 hash does not match expected value.")
@@ -99,7 +99,7 @@ struct HashAlgorithmsTests {
         let hashAlgorithm = Shake256()
         
         let hash = try hashAlgorithm.computeHash(data: data)
-        let expectedHash = "b54ff7255705a71ee2925e4a3e30e41aed489a579d5595e0df13e32e1e4dd202a7c7f68b31d6418d9845eb4d757adda6ab189e1bb340db818e5b3bc725d992fa".hexStringToData!
+        let expectedHash = "b54ff7255705a71ee2925e4a3e30e41aed489a579d5595e0df13e32e1e4dd202a7c7f68b31d6418d9845eb4d757adda6ab189e1bb340db818e5b3bc725d992fa".hexStringToData
         
         #expect(hash.count == 512 / 8, "SHAKE-256 hash length does not match expected value.")
         #expect(hash == expectedHash, "SHAKE-256 hash does not match expected value.")
