@@ -46,7 +46,8 @@ public func getXY(from key: Any) throws -> (x: Data, y: Data?) {
         let keyData = privateKey.publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32) 
         y = keyData.suffix(32)
-    } else if let privateKey = key as? P256.KeyAgreement.PrivateKey {
+    }
+    else if let privateKey = key as? P256.KeyAgreement.PrivateKey {
         let keyData = privateKey.publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32) 
         y = keyData.suffix(32)
@@ -54,21 +55,34 @@ public func getXY(from key: Any) throws -> (x: Data, y: Data?) {
         let keyData = privateKey.publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32) 
         y = keyData.suffix(32)
-    } else if let privateKey = key as? P384.KeyAgreement.PrivateKey {
+    }
+    else if let privateKey = key as? P384.KeyAgreement.PrivateKey {
         let keyData = privateKey.publicKey.x963Representation.dropFirst()
         x = keyData.prefix(48)
         y = keyData.suffix(48)
-    }else if let privateKey = key as? P384.Signing.PrivateKey {
+    } else if let privateKey = key as? P384.Signing.PrivateKey {
         let keyData = privateKey.publicKey.x963Representation.dropFirst()
         x = keyData.prefix(48)
         y = keyData.suffix(48)
-    } else if let privateKey = key as? P521.KeyAgreement.PrivateKey {
+    }
+    else if let privateKey = key as? P521.KeyAgreement.PrivateKey {
         x = privateKey.publicKey.x963Representation.subdata(in: 1..<67)
         y = privateKey.publicKey.x963Representation.subdata(in: 67..<133)
     } else if let privateKey = key as? P521.Signing.PrivateKey {
         x = privateKey.publicKey.x963Representation.subdata(in: 1..<67)
         y = privateKey.publicKey.x963Representation.subdata(in: 67..<133)
-    } else if let publicKey = key as? K1.KeyAgreement.PublicKey {
+    }
+    else if let privateKey = key as? Curve448.KeyAgreement.PrivateKey {
+        x = privateKey.publicKey.rawRepresentation
+    } else if let privateKey = key as? Curve448.Signing.PrivateKey {
+        x = privateKey.publicKey.rawRepresentation
+    }
+    else if let privateKey = key as? Curve25519.KeyAgreement.PrivateKey {
+        x = privateKey.publicKey.rawRepresentation
+    } else if let privateKey = key as? Curve25519.Signing.PrivateKey {
+        x = privateKey.publicKey.rawRepresentation
+    }
+    else if let publicKey = key as? K1.KeyAgreement.PublicKey {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32)
         y = keyData.suffix(32)
@@ -76,7 +90,8 @@ public func getXY(from key: Any) throws -> (x: Data, y: Data?) {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32)
         y = keyData.suffix(32)
-    } else if let publicKey = key as? P256.KeyAgreement.PublicKey {
+    }
+    else if let publicKey = key as? P256.KeyAgreement.PublicKey {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32)
         y = keyData.suffix(32)
@@ -84,7 +99,8 @@ public func getXY(from key: Any) throws -> (x: Data, y: Data?) {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(32)
         y = keyData.suffix(32)
-    } else if let publicKey = key as? P384.KeyAgreement.PublicKey {
+    }
+    else if let publicKey = key as? P384.KeyAgreement.PublicKey {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(48)
         y = keyData.suffix(48)
@@ -92,13 +108,25 @@ public func getXY(from key: Any) throws -> (x: Data, y: Data?) {
         let keyData = publicKey.x963Representation.dropFirst()
         x = keyData.prefix(48)
         y = keyData.suffix(48)
-    } else if let publicKey = key as? P521.KeyAgreement.PublicKey {
+    }
+    else if let publicKey = key as? P521.KeyAgreement.PublicKey {
         x = publicKey.x963Representation.subdata(in: 1..<67)
         y = publicKey.x963Representation.subdata(in: 67..<133)
     } else if let publicKey = key as? P521.Signing.PublicKey {
         x = publicKey.x963Representation.subdata(in: 1..<67)
         y = publicKey.x963Representation.subdata(in: 67..<133)
-    } else {
+    }
+    else if let publicKey = key as? Curve448.KeyAgreement.PublicKey {
+        x = publicKey.rawRepresentation
+    } else if let publicKey = key as? Curve448.Signing.PublicKey {
+        x = publicKey.rawRepresentation
+    }
+    else if let publicKey = key as? Curve25519.KeyAgreement.PublicKey {
+        x = publicKey.rawRepresentation
+    } else if let publicKey = key as? Curve25519.Signing.PublicKey {
+        x = publicKey.rawRepresentation
+    }
+    else {
         throw CoseError.invalidKey("Unsupported key type: \(type(of: key))")
     }
     return (x!, y)
@@ -116,31 +144,99 @@ public func deriveNumbers(from key: Any) throws -> (curve: CurveType, x: Data, y
         curve = .SECP256K1
         (x, y) = try getXY(from: privateKey)
         d = privateKey.rawRepresentation
-    } else if let privateKey = key as? P256.KeyAgreement.PrivateKey {
+    } else if let privateKey = key as? K1.ECDSA.PrivateKey {
         curve = .SECP256R1
         (x, y) = try getXY(from: privateKey)
         d = privateKey.rawRepresentation
-    } else if let privateKey = key as? P384.KeyAgreement.PrivateKey {
+    }
+    else if let privateKey = key as? P256.KeyAgreement.PrivateKey {
+        curve = .SECP256R1
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    } else if let privateKey = key as? P256.Signing.PrivateKey {
+        curve = .SECP256R1
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    }
+    else if let privateKey = key as? P384.KeyAgreement.PrivateKey {
         curve = .SECP384R1
         (x, y) = try getXY(from: privateKey)
         d = privateKey.rawRepresentation
-    } else if let privateKey = key as? P521.KeyAgreement.PrivateKey {
+    } else if let privateKey = key as? P384.Signing.PrivateKey {
+        curve = .SECP384R1
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    }
+    else if let privateKey = key as? P521.KeyAgreement.PrivateKey {
         curve = .SECP521R1
         (x, y) = try getXY(from: privateKey)
         d = privateKey.rawRepresentation
-    } else if let publicKey = key as? K1.KeyAgreement.PublicKey {
+    } else if let privateKey = key as? P521.Signing.PrivateKey {
+        curve = .SECP521R1
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    }
+    else if let privateKey = key as? Curve448.KeyAgreement.PrivateKey {
+        curve = .X448
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    } else if let privateKey = key as? Curve448.Signing.PrivateKey {
+        curve = .ED448
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    }
+    else if let privateKey = key as? Curve25519.KeyAgreement.PrivateKey {
+        curve = .X25519
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    } else if let privateKey = key as? Curve25519.Signing.PrivateKey {
+        curve = .ED25519
+        (x, y) = try getXY(from: privateKey)
+        d = privateKey.rawRepresentation
+    }
+    else if let publicKey = key as? K1.KeyAgreement.PublicKey {
         curve = .SECP256K1
         (x, y) = try getXY(from: publicKey)
-    }  else if let publicKey = key as? P256.KeyAgreement.PublicKey {
+    } else if let publicKey = key as? K1.ECDSA.PublicKey {
+        curve = .SECP256K1
+        (x, y) = try getXY(from: publicKey)
+    }
+    else if let publicKey = key as? P256.KeyAgreement.PublicKey {
         curve = .SECP256R1
         (x, y) = try getXY(from: publicKey)
-    } else if let publicKey = key as? P384.KeyAgreement.PublicKey {
+    } else if let publicKey = key as? P256.Signing.PublicKey {
+        curve = .SECP256R1
+        (x, y) = try getXY(from: publicKey)
+    }
+    else if let publicKey = key as? P384.KeyAgreement.PublicKey {
         curve = .SECP384R1
         (x, y) = try getXY(from: publicKey)
-    } else if let publicKey = key as? P521.KeyAgreement.PublicKey {
+    } else if let publicKey = key as? P384.Signing.PublicKey {
+        curve = .SECP384R1
+        (x, y) = try getXY(from: publicKey)
+    }
+    else if let publicKey = key as? P521.KeyAgreement.PublicKey {
         curve = .SECP521R1
         (x, y) = try getXY(from: publicKey)
-    } else {
+    } else if let publicKey = key as? P521.Signing.PublicKey {
+        curve = .SECP521R1
+        (x, y) = try getXY(from: publicKey)
+    }
+    else if let publicKey = key as? Curve448.KeyAgreement.PublicKey {
+        curve = .X448
+        (x, y) = try getXY(from: publicKey)
+    } else if let publicKey = key as? Curve448.Signing.PublicKey {
+        curve = .ED448
+        (x, y) = try getXY(from: publicKey)
+    }
+    else if let publicKey = key as? Curve25519.KeyAgreement.PublicKey {
+        curve = .X25519
+        (x, y) = try getXY(from: publicKey)
+    } else if let publicKey = key as? Curve25519.Signing.PublicKey {
+        curve = .ED25519
+        (x, y) = try getXY(from: publicKey)
+    }
+    else {
         throw CoseError.invalidKey("Unsupported key type: \(type(of: key))")
     }
     return (curve!, x!, y, d)

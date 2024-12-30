@@ -12,7 +12,7 @@ public class RSAKey: CoseKey {
     // MARK: - n Property
     var n: Data? {
         get {
-            return store[RSAKpN()] as? Data
+            return store[RSAKpN()] as? Data ?? nil
         }
         set {
             store[RSAKpN()] = newValue
@@ -22,7 +22,7 @@ public class RSAKey: CoseKey {
     // MARK: - e Property
     var e: Data? {
         get {
-            return store[RSAKpE()] as? Data
+            return store[RSAKpE()] as? Data ?? nil
         }
         set {
             store[RSAKpE()] = newValue
@@ -32,7 +32,7 @@ public class RSAKey: CoseKey {
     // MARK: - d Property
     var d: Data? {
         get {
-            return store[RSAKpD()] as? Data
+            return store[RSAKpD()] as? Data ?? nil
         }
         set {
             store[RSAKpD()] = newValue
@@ -42,7 +42,7 @@ public class RSAKey: CoseKey {
     // MARK: - p Property
     var p: Data? {
         get {
-            return store[RSAKpP()] as? Data
+            return store[RSAKpP()] as? Data ?? nil
         }
         set {
             store[RSAKpP()] = newValue
@@ -52,7 +52,7 @@ public class RSAKey: CoseKey {
     // MARK: - q Property
     var q: Data? {
         get {
-            return store[RSAKpQ()] as? Data
+            return store[RSAKpQ()] as? Data ?? nil
         }
         set {
             store[RSAKpQ()] = newValue
@@ -62,7 +62,7 @@ public class RSAKey: CoseKey {
     // MARK: - dp Property
     var dp: Data? {
         get {
-            return store[RSAKpDP()] as? Data
+            return store[RSAKpDP()] as? Data ?? nil
         }
         set {
             store[RSAKpDP()] = newValue
@@ -72,7 +72,7 @@ public class RSAKey: CoseKey {
     // MARK: - dq Property
     var dq: Data? {
         get {
-            return store[RSAKpDQ()] as? Data
+            return store[RSAKpDQ()] as? Data ?? nil
         }
         set {
             store[RSAKpDQ()] = newValue
@@ -83,7 +83,7 @@ public class RSAKey: CoseKey {
     // MARK: - qInv Property
     var qInv: Data? {
         get {
-            return store[RSAKpQInv()] as? Data
+            return store[RSAKpQInv()] as? Data ?? nil
         }
         set {
             store[RSAKpQInv()] = newValue
@@ -219,8 +219,8 @@ public class RSAKey: CoseKey {
         }
         
         // Generate prime numbers
-        let p = BigUInteger.generatePrime(keyBits / 2)
-        let q = BigUInteger.generatePrime(keyBits / 2)
+        let p = try BigUInteger.getPrime(keyBits / 2)!
+        let q = try BigUInteger.getPrime(keyBits / 2)!
         
         // Calculate modulus
         let n = p * q
@@ -300,6 +300,18 @@ public class RSAKey: CoseKey {
             t_i: t_i as? Data,
             optionalParams: optionalParams as! [String : Any]
         )
+    }
+    
+    
+    // Function to delete a key
+    func delete(key: AnyHashable) throws {
+        if let key = key as? RSAKeyParam {
+            return try delete(key: key.identifier)
+        } else {
+            let transformedKey = try RSAKeyParam.fromId(for: key)
+            store.removeValue(forKey: transformedKey as AnyHashable)
+            return
+        }
     }
     
     // MARK: - Helpers

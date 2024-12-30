@@ -9,41 +9,68 @@ public class DirectEncryption: CoseRecipient {
         set { _context = newValue }
     }
     private var _context: String = ""
+    
+    // MARK: - Initialization
+    public required init(phdr: [CoseHeaderAttribute: Any]? = nil,
+                         uhdr: [CoseHeaderAttribute: Any]? = nil,
+                         payload: Data = Data(),
+                         externalAAD: Data = Data(),
+                         key: CoseKey? = nil,
+                         recipients: [CoseRecipient] = []) {
+        super.init(
+            phdr: phdr,
+            uhdr: uhdr,
+            payload: payload,
+            externalAAD: externalAAD,
+            key: key,
+            recipients: recipients
+        )
+    }
 
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> DirectEncryption {
+    public override class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> DirectEncryption {
         
         let msg = try super.fromCoseObject(
-            coseObj: &coseObj
-        ) as! DirectEncryption
+            coseObj: coseObj
+        )
+        
+        let directEncryptionMsg = DirectEncryption(
+            phdr: msg.phdr,
+            uhdr: msg.uhdr,
+            payload: msg.payload ?? Data(),
+            externalAAD: msg.externalAAD,
+            key: msg.key as? CoseSymmetricKey ?? nil
+        )
         
         // Set context if provided
         if let ctx = context {
-            msg.context = ctx
+            directEncryptionMsg.context = ctx
         }
         
         // Check for zero-length payload
-        guard let payload = msg.payload, payload.isEmpty else {
+        guard let payload = directEncryptionMsg.payload, payload.isEmpty else {
             throw CoseError.malformedMessage("Recipient class DIRECT_ENCRYPTION must have a zero-length ciphertext.")
         }
         
         // Ensure there are no recipients
-        guard msg.recipients.isEmpty else {
+        guard directEncryptionMsg.recipients.isEmpty else {
             throw CoseError.malformedMessage("Recipient class DIRECT_ENCRYPTION cannot carry other recipients.")
         }
         
-        // Validate algorithm and protected header
-        guard let alg = try msg.getAttr(Algorithm()) as? CoseAlgorithm else {
-            throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
-        }
+        let algorithm: CoseAlgorithm
+        let algId: CoseAlgorithmIdentifier
         
-        if CoseAlgorithmIdentifier.fromFullName(alg.fullname) == .direct && !msg.phdr.isEmpty {
+        algorithm = try (msg.getAttr(Algorithm()) as? CoseAlgorithm)!
+//        algorithm = try CoseAlgorithm.fromId(for: alg!)
+        algId = CoseAlgorithmIdentifier(rawValue: algorithm.identifier)!
+        
+        if algId == .direct && !directEncryptionMsg.phdr.isEmpty {
             throw CoseError.malformedMessage(
-                "Recipient class DIRECT_ENCRYPTION with alg \(alg) must have a zero-length protected header."
+                "Recipient class DIRECT_ENCRYPTION with alg \(algorithm) must have a zero-length protected header."
             )
         }
         
-        return msg
+        return directEncryptionMsg
     }
     
     // Encoding logic for DirectEncryption
@@ -51,8 +78,9 @@ public class DirectEncryption: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Message must carry an algorithm parameter when using DIRECT_ENCRYPTION mode.")
         }
+        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
         
-        if CoseAlgorithmIdentifier.fromFullName(alg.fullname) == .direct && !phdr.isEmpty {
+        if algId == .direct && !phdr.isEmpty {
             throw CoseError.malformedMessage("Protected header must be empty.")
         }
 
@@ -68,12 +96,17 @@ public class DirectEncryption: CoseRecipient {
     }
 
     // Compute Content Encryption Key (CEK)
-    public override func computeCEK(targetAlgorithm: CoseAlgorithm, ops: String) throws -> CoseSymmetricKey? {
-        guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
-            throw CoseError.invalidAlgorithm("Message must carry an algorithm parameter when using DIRECT_ENCRYPTION mode.")
+    public func computeCEK(targetAlgorithm: CoseAlgorithm) throws -> CoseSymmetricKey? {
+        let algorithm: CoseAlgorithm
+        
+        if let alg = try getAttr(Algorithm()) as? CoseAlgorithm {
+            algorithm = alg
+        } else {
+            let algId = try getAttr(Algorithm())
+            algorithm = try CoseAlgorithm.fromId(for: algId as Any)
         }
         
-        if CoseAlgorithmIdentifier.fromFullName(alg.fullname) == .direct && !phdr.isEmpty {
+        if algorithm.identifier == CoseAlgorithmIdentifier.direct.rawValue {
             return nil
         } else {
             guard let key = key else {

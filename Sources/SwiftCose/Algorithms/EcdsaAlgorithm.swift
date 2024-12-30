@@ -14,17 +14,17 @@ public class EcdsaAlgorithm: CoseAlgorithm {
         let signature: Data
         switch CoseAlgorithmIdentifier(rawValue: identifier) {
             case .es256:
-                guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: key.d) else {
+                guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
                 }
                 signature = try privateKey.signature(for: data).derRepresentation
             case .es384:
-                guard let privateKey = try? P384.Signing.PrivateKey(rawRepresentation: key.d) else {
+                guard let privateKey = try? P384.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
                 }
                 signature = try privateKey.signature(for: data).derRepresentation
             case .es512:
-                guard let privateKey = try? P521.Signing.PrivateKey(rawRepresentation: key.d) else {
+                guard let privateKey = try? P521.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
                 }
 
@@ -45,8 +45,8 @@ public class EcdsaAlgorithm: CoseAlgorithm {
     public func verify(key: EC2Key, data: Data, signature: Data) throws -> Bool {
         // Create x963Representation: a prefix of 0x04 followed by x and y concatenated
         var x963Representation = Data([0x04])
-        x963Representation.append(key.x)
-        x963Representation.append(key.y)
+        x963Representation.append(key.x!)
+        x963Representation.append(key.y!)
         
         var isValid: Bool = false
         let algId = CoseAlgorithmIdentifier(rawValue: identifier)

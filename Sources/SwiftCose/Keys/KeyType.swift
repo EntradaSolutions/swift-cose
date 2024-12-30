@@ -1,6 +1,6 @@
 import Foundation
 
-public enum KeyTypeIdentifier: Int, Codable, Equatable {
+public enum KeyTypeIdentifier: Int, CaseIterable, Sendable {
     case reserved = 0
     case okp = 1
     case ec2 = 2

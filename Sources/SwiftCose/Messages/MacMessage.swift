@@ -24,14 +24,14 @@ public class MacMessage: MacCommon {
     }
     
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> MacMessage {
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? MacMessage else {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> MacMessage {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? MacMessage else {
             throw CoseError.invalidMessage("Failed to decode base EncMessage.")
         }
         
         // Extract and assign the authentication tag
         if !coseObj.isEmpty {
-            msg.authTag = coseObj.removeFirst().bytesStringValue!
+            msg.authTag = coseObj.first!.bytesStringValue!
         } else {
             throw CoseError.valueError("Missing authentication tag in COSE object.")
         }
@@ -39,7 +39,7 @@ public class MacMessage: MacCommon {
         // Attempt to decode recipients
         do {
             if let recipientArray = coseObj.first?.arrayValue {
-                coseObj.removeFirst()
+//                coseObj.removeFirst()
                 for recipient in recipientArray {
                     guard let recipient = recipient.arrayValue else {
                         throw CoseError.valueError("Invalid recipient")

@@ -109,7 +109,7 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
                 uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data? = nil,
                 externalAAD: Data = Data(),
-                key: CoseSymmetricKey? = nil) {
+                key: CoseKey? = nil) {
         super.init(phdr: phdr, uhdr: uhdr)
         self.payload = payload
         self.externalAAD = externalAAD
@@ -163,10 +163,14 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     /// Function to return an initialized COSE message object.
     /// - Parameter coseObj: The CBOR object to decode.
     /// - Returns: The decoded COSE message.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseMessage {
-        let msg = try super.fromCoseObject(coseObj: &coseObj) as! CoseMessage
-        msg.payload = coseObj.removeLast().bytesStringValue
-        return msg
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> CoseMessage {
+        let baseMsg = try super.fromCoseObject(coseObj: coseObj)
+        baseMsg.payload = coseObj.last?.bytesStringValue
+        return CoseMessage(
+            phdr: baseMsg.phdr,
+            uhdr: baseMsg.uhdr,
+            payload: baseMsg.payload
+        )
     }
     
     /// Decode received COSE message based on the CBOR tag.
@@ -191,10 +195,10 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
             throw CoseError.valueError("Decode accepts only bytes as input.")
         }
         
-        if var messageType = cborObj?.arrayValue {
+        if let messageType = cborObj?.arrayValue {
             do {
                 let decoded = try T.fromCoseObject(
-                    coseObj: &messageType
+                    coseObj: messageType
                 )
                 return decoded as! T
             } catch {

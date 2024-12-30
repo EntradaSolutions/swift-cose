@@ -150,24 +150,26 @@ public class CoseBase {
         
         if phdrEncoded != nil {
             if phdrEncoded!.isEmpty {
-                self._phdr = [:]
+                self.phdr = [:]
             } else {
-                let phdrCBOR = try CBORSerialization
-                    .cbor(from: phdrEncoded!)
-                if let map = phdrCBOR.mapValue {
-                    map
-                        .forEach {
-                            (key, value) in self._phdr[key.unwrapped as! CoseHeaderAttribute] = value.unwrapped
-                            
-                        }
+                let decoded = try CBORSerialization.cbor(from: phdrEncoded!)
+                self.phdr = try CoseBase.parseHeader(hdr: decoded.unwrapped as! [AnyHashable: Any])
+                
+                if let algId = self.phdr[Algorithm()] {
+                    let coseAlg = try CoseAlgorithm.fromId(for: algId)
+                    self.phdr[Algorithm()] = coseAlg
                 }
             }
             
         } else if phdr == nil {
-            self._phdr = [:]
+            self.phdr = [:]
         }
 
-        self._uhdr = uhdr ?? [:] as! [CoseHeaderAttribute : Any]
+        self.uhdr = uhdr ?? [:] as! [CoseHeaderAttribute : Any]
+        if let algId = self.uhdr[Algorithm()] {
+            let coseAlg = try CoseAlgorithm.fromId(for: algId)
+            self.uhdr[Algorithm()] = coseAlg
+        }
         self.algTstrEncoding = algTstrEncoding ?? false
         
         self._phdrEncoded = phdrEncoded
@@ -179,16 +181,21 @@ public class CoseBase {
     }
 
     // MARK: - Methods
-    public class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseBase {
+    public class func fromCoseObject(coseObj: [CBOR]) throws -> CoseBase {
         guard coseObj.count >= 2 else {
             throw CoseError.valueError("Insufficient elements in coseObj to construct a CoseBase")
         }
         
-        let phdrEncoded = coseObj.removeFirst()
-        let uhdr = coseObj.removeFirst()
+        var unprotectedAttributes: [CoseHeaderAttribute: Any] = [:]
+        
+        let phdrEncoded = coseObj[0]
+        let uhdr = coseObj[1]
+        if let uhdrMap = uhdr.unwrapped as? [AnyHashable: Any] {
+            unprotectedAttributes = try parseHeader(hdr: uhdrMap)
+        }
 
         return try CoseBase(
-            uhdr: uhdr.unwrapped as? [CoseHeaderAttribute: Any],
+            uhdr: unprotectedAttributes,
             phdrEncoded: phdrEncoded.bytesStringValue
         )
     }

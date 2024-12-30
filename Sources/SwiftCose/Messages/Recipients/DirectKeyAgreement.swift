@@ -11,10 +11,10 @@ public class DirectKeyAgreement: CoseRecipient {
     private var _context: String = ""
 
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> DirectKeyAgreement {
+    public override class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> DirectKeyAgreement {
         
         let msg = try super.fromCoseObject(
-            coseObj: &coseObj
+            coseObj: coseObj
         ) as! DirectKeyAgreement
         
         // Set context if provided
@@ -55,17 +55,24 @@ public class DirectKeyAgreement: CoseRecipient {
         }
         
         let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_HKDF_256, .ecdhES_HKDF_512]
-        let ephermalKey = try getAttr(EphemeralKey())
 
-        // Ephemeral key generation
+        // if ephemeral and not set, generate ephemeral key pair
         if key == nil {
             if needsEphemeralKey.contains(algId!) {
                 try setupEphemeralKey(peerKey: peerKey)
             } else {
+                // alg uses a static sender
                 throw CoseError.invalidKey("Static sender key cannot be nil.")
             }
         }
         
+        if !recipients.isEmpty {
+            throw CoseError.malformedMessage("Recipient class \(type(of: self)) must carry at least one recipient.")
+        }
+        
+        // only the ephemeral sender key MUST be included in the header,
+        // for the static sender it is recommended by not obligated
+        let ephermalKey = try getAttr(EphemeralKey())
         if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
             throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }

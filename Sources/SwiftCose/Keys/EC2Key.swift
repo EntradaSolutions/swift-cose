@@ -6,20 +6,29 @@ import K1
 public class EC2Key: CoseKey {
     public var optionalParams: [AnyHashable: Any]
     
-    private var _curve: CoseCurve?
-    
-    // MARK: - Supported Key Operations
-    private let supportedOps: [KeyOps.Type] = [
-        SignOp.self,
-        VerifyOp.self,
-        DeriveKeyOp.self,
-        DeriveBitsOp.self
-    ]
+    // MARK: - curve Property
+    /// The mandatory curve attribute for the EC2Key.
+    public var curve: CoseCurve {
+        get {
+            if store.contains(where: { $0.key == EC2KpCurve() as AnyHashable }) {
+                return store[EC2KpCurve()] as! CoseCurve
+            } else {
+                fatalError("EC2 COSE key must have the EC2KpCurve attribute")
+            }
+        }
+        set {
+            if newValue.keyType != .ktyEC2 {
+                fatalError("Invalid COSE curve \(newValue) for key type \(EC2Key.self)")
+            }
+            store[EC2KpCurve()] = newValue
+        }
+    }
     
     // MARK: - x Property
-    var x: Data {
+    /// The mandatory `EC2KpX` attribute of the COSE EC2 Key object.
+    var x: Data? {
         get {
-            return store[EC2KpX()] as! Data
+            return store[EC2KpX()] as? Data ?? nil
         }
         set {
             store[EC2KpX()] = newValue
@@ -27,9 +36,10 @@ public class EC2Key: CoseKey {
     }
     
     // MARK: - y Property
-    var y: Data {
+    /// The mandatory`EC2KpY` attribute of the COSE EC2 Key object.
+    var y: Data? {
         get {
-            return store[EC2KpY()] as! Data
+            return store[EC2KpY()] as? Data ?? nil
         }
         set {
             store[EC2KpY()] = newValue
@@ -37,9 +47,10 @@ public class EC2Key: CoseKey {
     }
     
     // MARK: - d Property
-    var d: Data {
+    /// The mandatory`EC2KpD` attribute of the COSE EC2 Key object.
+    var d: Data? {
         get {
-            return store[EC2KpD()] as! Data
+            return store[EC2KpD()] as? Data ?? nil
         }
         set {
             store[EC2KpD()] = newValue
@@ -48,7 +59,6 @@ public class EC2Key: CoseKey {
     
     // MARK: - Key Operations
     private var _keyOps: [KeyOps] = []
-    
     public override var keyOps: [KeyOps] {
         get {
             return _keyOps as [KeyOps]
@@ -62,6 +72,14 @@ public class EC2Key: CoseKey {
             _keyOps = newValue 
         }
     }
+    
+    // MARK: - Supported Key Operations
+    private let supportedOps: [KeyOps.Type] = [
+        SignOp.self,
+        VerifyOp.self,
+        DeriveKeyOp.self,
+        DeriveBitsOp.self
+    ]
     
     // MARK: - Helpers
     
@@ -86,31 +104,6 @@ public class EC2Key: CoseKey {
         ]
         
         return supportedKeyTypes.contains(where: { $0 as? any Any.Type == type(of: key) })
-    }
-    
-    // MARK: - curve Property
-    /// The mandatory curve attribute for the EC2Key.
-    public var curve: CoseCurve {
-        get {
-            if _curve != nil {
-                return store[EC2KpCurve()] as! CoseCurve
-            } else {
-                fatalError("EC2 COSE key must have the EC2KpCurve attribute")
-            }
-        }
-        set {
-            // Parse and validate the curve
-            guard let parsedCurve = try! EC2KpCurve().valueParser!(newValue) as? CoseCurve else {
-                fatalError("Failed to parse the curve")
-            }
-            
-            if parsedCurve.keyType != .ktyEC2 {
-                fatalError("Invalid COSE curve \(parsedCurve) for key type \(EC2Key.self)")
-            }
-            
-            // Store the curve
-            store[EC2KpCurve()] = parsedCurve
-        }
     }
     
     // MARK: - Initializtion
@@ -145,14 +138,15 @@ public class EC2Key: CoseKey {
             throw CoseError.invalidKey("Illegal key type in EC2 COSE Key: \(String(describing: transformedDict[KpKty()]))")
         }
         
-        self._curve = curve
+        guard x != nil || y != nil || d != nil else {
+            throw CoseError.invalidKey("Either the public values or the private value must be specified")
+        }
+        
         self.optionalParams = transformedDict
         
         super.init(keyDict: transformedDict)
         
-        guard x != nil || y != nil || d != nil else {
-            throw CoseError.invalidKey("Either the public values or the private value must be specified")
-        }
+        self.curve = curve
         
         if d != nil {
             // Derive public key (x, y) from private key `d`
@@ -285,21 +279,25 @@ public class EC2Key: CoseKey {
     
 
     // Function to delete a key
-    func delete(key: String) throws {
-        let transformedKey = try EC2KeyParam.fromId(for: key)
+    func delete(key: AnyHashable) throws {
+        if let key = key as? EC2KeyParam {
+            return try delete(key: key.identifier)
+        } else {
+            let transformedKey = try EC2KeyParam.fromId(for: key)
 
-        if transformedKey != KpKty() && transformedKey != EC2KpCurve() {
-            if transformedKey == EC2KpD() && (store[EC2KpY()] == nil || store[EC2KpX()] == nil) {
-                return  // Do nothing
-            } else if transformedKey == EC2KpX() && store[EC2KpD()] == nil {
-                return  // Do nothing
-            } else if (transformedKey == EC2KpX() || transformedKey == EC2KpY()) && store[EC2KpD()] != nil {
-                store.removeValue(forKey: EC2KpX())
-                store.removeValue(forKey: EC2KpY())
-                return
-            } else {
-                store.removeValue(forKey: key)
-                return
+            if transformedKey != KpKty() && transformedKey != EC2KpCurve() {
+                if transformedKey == EC2KpD() && (store[EC2KpY()] == nil || store[EC2KpX()] == nil) {
+                    return  // Do nothing
+                } else if transformedKey == EC2KpX() && store[EC2KpD()] == nil {
+                    return  // Do nothing
+                } else if (transformedKey == EC2KpX() || transformedKey == EC2KpY()) && store[EC2KpD()] != nil {
+                    store.removeValue(forKey: EC2KpX())
+                    store.removeValue(forKey: EC2KpY())
+                    return
+                } else {
+                    store.removeValue(forKey: transformedKey as AnyHashable)
+                    return
+                }
             }
         }
 

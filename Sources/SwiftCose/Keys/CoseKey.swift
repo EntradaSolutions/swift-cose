@@ -282,7 +282,7 @@ public class CoseKey: CustomStringConvertible {
         }
     }
     
-    class func extractFromDict<T: CoseKeyParam>(
+    class func extractFromDict<T: KeyParam>(
         _ coseKey: [AnyHashable: Any],
         parameter: T,
         defaultValue: Any? = Data()
@@ -298,7 +298,7 @@ public class CoseKey: CustomStringConvertible {
         }
     }
     
-    class func removeFromDict<T: CoseKeyParam>(
+    class func removeFromDict<T: KeyParam>(
         _ coseKey: inout [AnyHashable: Any],
         parameter: T
     ) {
@@ -351,17 +351,19 @@ public class CoseKey: CustomStringConvertible {
     // MARK: - Verification
     public func verify(keyType: CoseKey.Type, algorithm: CoseAlgorithm, keyOps: [KeyOps]) throws {
         guard type(of: self) == keyType else {
-            throw CoseError.invalidKeyType("Invalid key type")
+            throw CoseError.invalidKeyType("Invalid key type: \(type(of: self)) expected \(keyType)")
         }
         
         if let alg = self.alg, alg != algorithm {
             throw CoseError.invalidAlgorithm("Invalid algorithm")
         }
         
-        let supportedOps = self.keyOps.map { $0 }
-        let requestedOps = Set(keyOps)
-        if !requestedOps.isSubset(of: supportedOps) {
-            throw CoseError.invalidKeyOps("Invalid key operations")
+        if !self.keyOps.isEmpty {
+            let supportedOps = self.keyOps.map { $0 }
+            let requestedOps = Set(keyOps)
+            if !requestedOps.isSubset(of: supportedOps) {
+                throw CoseError.invalidKeyOps("Invalid key operations")
+            }
         }
     }
     

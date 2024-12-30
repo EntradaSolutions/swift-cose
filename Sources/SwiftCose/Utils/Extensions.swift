@@ -3,6 +3,7 @@ import CryptoKit
 import OrderedCollections
 import PotentCBOR
 import CryptoSwift
+@_implementationOnly import OpenSSL
 
 
 // MARK: - Curve25519.KeyAgreement.PublicKey Extensions
@@ -218,4 +219,33 @@ extension RSA {
     func publicKey() throws -> PublicKey {
         return try PublicKey(data: self.publicKeyExternalRepresentation())
     }
+}
+
+// MARK: CS.BigUInt extension
+
+extension BigUInteger {
+
+  public static func getPrime(_ bits: Int = 1024) throws -> BigUInteger? {
+      let bn = BN_new()       // Create a new BIGNUM object
+      let ctx = BN_CTX_new()  // Create a new BN context for calculations
+      
+      defer {
+          BN_free(bn)
+          BN_CTX_free(ctx)
+      }
+      
+      // Generate a prime number with the specified bit length
+      if BN_generate_prime_ex(bn, Int32(bits), 1, nil, nil, nil) == 1 {
+          // Get the raw bytes from BIGNUM
+         let byteCount = (BN_num_bits(bn) + 7) / 8
+          var buffer = [UInt8](repeating: 0, count: Int(byteCount))
+         
+         BN_bn2bin(bn, &buffer)
+         
+         // Convert to BigUInteger directly from bytes
+         return BigUInteger(Data(buffer))
+      } else {
+          throw CoseError.openSSLError("Failed to generate prime number")
+      }
+  }
 }

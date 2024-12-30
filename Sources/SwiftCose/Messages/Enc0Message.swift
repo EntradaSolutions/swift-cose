@@ -31,9 +31,9 @@ public class Enc0Message: EncCommon {
     /// Function to decode a COSE_Encrypt0 message
     /// - Parameter coseObj: The array to decode.
     /// - Returns: The decoded Enc0Message.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> Enc0Message {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> Enc0Message {
         return try super.fromCoseObject(
-            coseObj: &coseObj
+            coseObj: coseObj
         ) as! Enc0Message
     }
 

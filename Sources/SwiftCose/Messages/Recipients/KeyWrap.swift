@@ -12,10 +12,10 @@ public class KeyWrap: CoseRecipient {
     private var _context: String = ""
     
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> KeyWrap {
+    public override class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> KeyWrap {
         
         let msg = try super.fromCoseObject(
-            coseObj: &coseObj
+            coseObj: coseObj
         ) as! KeyWrap
         
         // Set context if provided

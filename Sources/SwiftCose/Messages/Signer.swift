@@ -28,8 +28,8 @@ public class CoseSignature: SignCommon {
     
     // MARK: - Methods
     /// Parses COSE_Signature objects
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseSignature {
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? CoseSignature else {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> CoseSignature {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? CoseSignature else {
             throw CoseError.invalidMessage("Failed to decode base CoseSignature.")
         }
         return msg

@@ -23,8 +23,8 @@ public class Mac0Message: MacCommon {
     ///   - coseObj: The COSE object represented as a CBOR array.
     ///   - allowUnknownAttributes: Flag to allow unknown attributes.
     /// - Returns: A decoded Mac0Message instance.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> Mac0Message {
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? Mac0Message else {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> Mac0Message {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? Mac0Message else {
             throw CoseError.invalidMessage("Failed to decode base Mac0Message.")
         }
 
@@ -32,7 +32,7 @@ public class Mac0Message: MacCommon {
         guard let authTagData = coseObj.first else {
             throw CoseError.invalidMessage("Missing or invalid authTag.")
         }
-        coseObj.removeFirst()
+//        coseObj.removeFirst()
         msg.authTag = authTagData.bytesStringValue!
         
         return msg

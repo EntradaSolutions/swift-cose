@@ -42,9 +42,9 @@ public class CoseSignMessage: CoseMessage {
     ///   - coseObj: The CBOR object to decode.
     ///   - allowUnknownAttributes: Whether to allow unknown attributes.
     /// - Returns: The decoded SignMessage.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> CoseSignMessage {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> CoseSignMessage {
         // Attempt to decode the base class message
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? CoseSignMessage else {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? CoseSignMessage else {
             throw CoseError.invalidMessage("Failed to decode base CoseSignMessage.")
         }
 
@@ -56,8 +56,8 @@ public class CoseSignMessage: CoseMessage {
         }
         
         for signerCbor in signerArray {
-            if var signerCborArray = signerCbor.arrayValue {
-                signers.append(try CoseSignature.fromCoseObject(coseObj: &signerCborArray))
+            if let signerCborArray = signerCbor.arrayValue {
+                signers.append(try CoseSignature.fromCoseObject(coseObj: signerCborArray))
             }
         }
         

@@ -24,7 +24,7 @@ public class CoseRecipient: CoseMessage {
     private var _recipients: [CoseRecipient] = []
     
     // MARK: - Abstract Methods
-    public class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> CoseRecipient {
+    public class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> CoseRecipient {
         fatalError("This method must be implemented by subclasses.")
     }
     
@@ -49,13 +49,13 @@ public class CoseRecipient: CoseMessage {
     ///   - uhdr: Unprotected header.
     ///   - payload: The payload of the COSE message.
     ///   - externalAAD: The external additional authenticated data.
-    ///   - key: The symmetric key for encryption/decryption.
+    ///   - key: The key for encryption/decryption.
     ///   - recipients: The list of `CoseRecipient` objects.
     public required init(phdr: [CoseHeaderAttribute: Any]? = nil,
                          uhdr: [CoseHeaderAttribute: Any]? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
-                         key: CoseSymmetricKey? = nil,
+                         key: CoseKey? = nil,
                          recipients: [CoseRecipient] = []) {
         super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
         self.recipients = recipients
@@ -80,50 +80,59 @@ public class CoseRecipient: CoseMessage {
     }
     
     /// Create a recipient instance based on the COSE object
-    public class func createRecipient(recipient: CBOR.Array, context: String) throws -> CoseRecipient {
+    public class func createRecipient(recipient: [CBOR], context: String) throws -> CoseRecipient {
+        guard recipient.count >= 3 else {
+            throw CoseError.invalidMessage("Recipient structure must have at least 3 elements.")
+        }
+        
+        // 1. Parse the Protected Header
         // Check if the first item in the recipient array is not empty
         let pAlg: CoseAlgorithm?
-        if let firstElement = recipient.first, !firstElement.isNull {
-            let header = try parseHeader(hdr: firstElement.unwrapped as! [AnyHashable: Any])
+        let protectedHeader = recipient[0]
+        var pHdr: [CoseHeaderAttribute: Any] = [:]
+        
+        if let pBytes = protectedHeader.bytesStringValue, !pBytes.isEmpty {
+            let decoded = try CBORSerialization.cbor(from: pBytes)
+            pHdr = try parseHeader(hdr: decoded.unwrapped as! [AnyHashable: Any])
             
-            guard let alg = header[Algorithm()] as? CoseAlgorithm else {
+            if let alg = pHdr[Algorithm()] {
+                pAlg = try CoseAlgorithm.fromId(for: alg)
+            } else  {
                 throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
             }
-            
-            pAlg = alg
         } else {
             pAlg = nil
         }
-
+        
+        // 2. Parse the Unprotected Header
         // Parse the unprotected algorithm
-        let uAlg: CoseAlgorithm? = try {
-            let secondElement = recipient[1]
-            if !secondElement.isNull {
-                let header = try parseHeader(hdr: secondElement.unwrapped as! [AnyHashable: Any])
-                
-                guard let alg = header[Algorithm()] as? CoseAlgorithm else {
-                    throw CoseError.invalidAlgorithm("Algorithm not found in unprotected headers")
-                }
-                return alg
-            }
-            return nil
-        }()
+        let uAlg: CoseAlgorithm?
+        let unprotectedHeader = recipient[1]
+        var unprotectedAttributes: [CoseHeaderAttribute: Any] = [:]
+        
+        if let uhdrMap = unprotectedHeader.unwrapped as? [AnyHashable: Any] {
+            unprotectedAttributes = try parseHeader(hdr: uhdrMap)
+        }
+        
+        // Extract the algorithm from unprotected attributes
+        let alg = unprotectedAttributes[Algorithm()]
+        uAlg = try CoseAlgorithm.fromId(for: alg as Any)
 
         // Determine the appropriate recipient class based on the algorithms
         if pAlg != nil {
             let coseRecipientClass = fromAlgorithm(algorithm: pAlg!)
-            var coseRecipient = recipient
+            let coseRecipient = recipient
             return try coseRecipientClass!
                 .fromCoseObject(
-                    coseObj: &coseRecipient,
+                    coseObj: coseRecipient,
                     context: context
                 )
         } else if uAlg != nil {
             let coseRecipientClass = fromAlgorithm(algorithm: uAlg!)
-            var coseRecipient = recipient
+            let coseRecipient = recipient
             return try coseRecipientClass!
                 .fromCoseObject(
-                    coseObj: &coseRecipient,
+                    coseObj: coseRecipient,
                     context: context
                 )
         } else {

@@ -4,36 +4,31 @@ import PotentCodables
 import SwiftCurve448
 
 public class OKPKey: CoseKey {
-    // MARK: - curve Property
     public var optionalParams: [AnyHashable: Any]
     
+    // MARK: - curve Property
     /// The mandatory `OKPKpCurve` attribute of the COSE OKP Key object.
     public var curve: CoseCurve {
         get {
-            if _curve != nil {
+            if store.contains(where: { $0.key == OKPKpCurve() as AnyHashable }) {
                 return store[OKPKpCurve()] as! CoseCurve
             } else {
-                fatalError("EC2 COSE key must have the OKPKpCurve attribute")
+                fatalError("OKP COSE key must have the OKPKpCurve attribute")
             }
         }
         set {
             if newValue.keyType != .ktyOKP {
                 fatalError("Invalid COSE curve \(newValue) for key type \(OKPKey.self)")
             }
-            
-            // Store the curve
-            _curve = newValue
-            store[OKPKpCurve()] = _curve
+            store[OKPKpCurve()] = newValue
         }
     }
-    private var _curve: CoseCurve?
-    
     
     // MARK: - x Property
     /// The mandatory `OKPKpX` attribute of the COSE OKP Key object.
-    var x: Data {
+    var x: Data? {
         get {
-            return store[OKPKpX()] as! Data
+            return store[OKPKpX()] as? Data ?? nil
         }
         set {
             store[OKPKpX()] = newValue
@@ -42,9 +37,9 @@ public class OKPKey: CoseKey {
     
     // MARK: - d Property
     /// The mandatory`OKPKpD` attribute of the COSE OKP Key object.
-    var d: Data {
+    var d: Data? {
         get {
-            return store[OKPKpD()] as! Data
+            return store[OKPKpD()] as? Data ?? nil
         }
         set {
             store[OKPKpD()] = newValue
@@ -53,7 +48,6 @@ public class OKPKey: CoseKey {
     
     // MARK: - Key Operations
     private var _keyOps: [KeyOps] = []
-    
     public override var keyOps: [KeyOps] {
         get {
             return _keyOps as [KeyOps]
@@ -83,7 +77,7 @@ public class OKPKey: CoseKey {
     ///   - x: Public value of the OKP key.
     ///   - d: Private value of the OKP key.
     ///   - optionalParams: A dictionary with optional key parameters.
-    public init(curve: CoseCurve, x: Data, d: Data? = nil, optionalParams: [AnyHashable: Any] = [:]) throws {
+    public init(curve: CoseCurve, x: Data? = nil, d: Data? = nil, optionalParams: [AnyHashable: Any] = [:]) throws {
         var transformedDict: [AnyHashable: Any] = [KpKty(): KtyOKP()]
         
         // Transform optional parameters
@@ -101,7 +95,7 @@ public class OKPKey: CoseKey {
             throw CoseError.invalidKey("Illegal key type in OKP COSE Key: \(String(describing: transformedDict[KpKty()]))")
         }
         
-        guard !x.isEmpty || d != nil else {
+        guard x != nil || d != nil else {
             throw CoseError.invalidKey("Public key cannot be empty")
         }
         
@@ -132,7 +126,7 @@ public class OKPKey: CoseKey {
         
         return try OKPKey(
             curve: curve,
-            x: x as! Data,
+            x: x as? Data,
             d: d as? Data,
             optionalParams: optionalParams
         )
@@ -150,43 +144,14 @@ public class OKPKey: CoseKey {
     ) throws -> OKPKey {
         let curve = try curveFromCryptoKey(extKey)
         
-        var x: Data?
-        var d: Data?
-        
-        if let privateKey = extKey as? Curve25519.KeyAgreement.PrivateKey {
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve25519.KeyAgreement.PublicKey {
-            x = publicKey.rawRepresentation
-        } else if let privateKey = extKey as? Curve25519.Signing.PrivateKey {
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve25519.Signing.PublicKey {
-            x = publicKey.rawRepresentation
-        } else if let privateKey = extKey as? Curve448.KeyAgreement.PrivateKey {
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve448.KeyAgreement.PublicKey {
-            x = publicKey.rawRepresentation
-        } else if let privateKey = extKey as? Curve448.Signing.PrivateKey {
-            let publicKey = privateKey.publicKey
-            x = publicKey.rawRepresentation
-            d = privateKey.rawRepresentation
-        } else if let publicKey = extKey as? Curve448.Signing.PublicKey {
-            x = publicKey.rawRepresentation
-        } else {
-            throw CoseError.invalidKey("Unsupported key type: \(type(of: extKey))")
-        }
+        let (_, x, _, d) = try deriveNumbers(from: extKey)
         
         var coseKey: [AnyHashable : Any] = [
             OKPKpCurve(): curve.identifier,
+            OKPKpX(): x,
         ]
         
-        if let x = x { coseKey[EC2KpX()] = x }
-        if let d = d { coseKey[EC2KpD()] = d }
+        if let d = d { coseKey[OKPKpD()] = d }
         
         // Merge optional params
         for (key, value) in optionalParams {
@@ -265,17 +230,21 @@ public class OKPKey: CoseKey {
     }
     
     // Function to delete a key
-    func delete(key: String) throws {
-        let transformedKey = try OKPKeyParam.fromId(for: key)
+    func delete(key: AnyHashable) throws {
+        if let key = key as? OKPKeyParam {
+            return try delete(key: key.identifier)
+        } else {
+            let transformedKey = try OKPKeyParam.fromId(for: key)
 
-        if transformedKey != KpKty() && transformedKey != OKPKpCurve() {
-            if transformedKey == OKPKpD() && store[OKPKpX()] == nil {
-                return  // Do nothing
-            } else if transformedKey == OKPKpX() && store[OKPKpD()] == nil {
-                return  // Do nothing
-            } else {
-                store.removeValue(forKey: key)
-                return
+            if transformedKey != KpKty() && transformedKey != OKPKpCurve() {
+                if transformedKey == OKPKpD() && store[OKPKpX()] == nil {
+                    return  // Do nothing
+                } else if transformedKey == OKPKpX() && store[OKPKpD()] == nil {
+                    return  // Do nothing
+                } else {
+                    store.removeValue(forKey: transformedKey as AnyHashable)
+                    return
+                }
             }
         }
 

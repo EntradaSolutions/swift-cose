@@ -11,10 +11,10 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
     private var _context: String = ""
     
     // MARK: - Methods
-    public override class func fromCoseObject(coseObj: inout [CBOR], context: String? = nil) throws -> KeyAgreementWithKeyWrap {
+    public override class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> KeyAgreementWithKeyWrap {
         
         let msg = try super.fromCoseObject(
-            coseObj: &coseObj
+            coseObj: coseObj
         ) as! KeyAgreementWithKeyWrap
         
         // Set context if provided

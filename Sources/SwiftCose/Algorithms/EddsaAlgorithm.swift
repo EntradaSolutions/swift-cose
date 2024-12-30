@@ -12,13 +12,13 @@ public class EdDSA: CoseAlgorithm {
         let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier)
         switch curveId {
             case .ed25519:
-                guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d) else {
+                guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
                 }
                 return try privateKey.signature(for: data)
                 
             case .ed448:
-                guard let privateKey = try? Curve448.Signing.PrivateKey(rawRepresentation: key.d) else {
+                guard let privateKey = try? Curve448.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
                 }
                 return try privateKey.signature(for: data)
@@ -32,13 +32,13 @@ public class EdDSA: CoseAlgorithm {
         let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier)
         switch curveId {
             case .ed25519:
-                guard let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key.x) else {
+                guard let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key.x!) else {
                     throw CoseError.invalidKey("Error creating public key for \(curveId.debugDescription)")
                 }
                 return publicKey.isValidSignature(signature, for: data)
                 
             case .ed448:
-                guard let publicKey = try? Curve448.Signing.PublicKey(rawRepresentation: key.x) else {
+                guard let publicKey = try? Curve448.Signing.PublicKey(rawRepresentation: key.x!) else {
                     throw CoseError.invalidKey("Error creating public key for \(curveId.debugDescription)")
                 }
                 return publicKey.isValidSignature(signature, for: data)

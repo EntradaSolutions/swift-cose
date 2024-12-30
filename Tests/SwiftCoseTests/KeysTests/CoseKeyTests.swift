@@ -147,8 +147,8 @@ struct CoseKeyTests {
     
     @Test
     func testRemoveItem() async throws {
-        var keyDict: [AnyHashable: Any] = [KpKty(): KtyReserved()]
-        var coseKey = CoseKey(keyDict: keyDict)
+        let keyDict: [AnyHashable: Any] = [KpKty(): KtyReserved()]
+        let coseKey = CoseKey(keyDict: keyDict)
         
         coseKey.removeItem(forKey: KpKty())
         #expect(coseKey[KpKty()] == nil)

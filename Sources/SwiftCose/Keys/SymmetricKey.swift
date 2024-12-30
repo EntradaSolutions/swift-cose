@@ -8,7 +8,7 @@ public class CoseSymmetricKey: CoseKey {
     // Mandatory SymKpK attribute (key)
     public var k: Data {
         get {
-            guard let key = store["SymKpK"] as? Data else {
+            guard let key = store[SymKpK()] as? Data else {
                 fatalError("Symmetric COSE key must have the SymKpK attribute")
             }
             return key
@@ -17,16 +17,15 @@ public class CoseSymmetricKey: CoseKey {
             guard newValue.count == 16 || newValue.count == 24 || newValue.count == 32 else {
                 fatalError("Key length should be either 16, 24, or 32 bytes")
             }
-            store["SymKpK"] = newValue
+            store[SymKpK()] = newValue
         }
     }
 
     // Supported key operations
     private var _keyOps: [KeyOps] = []
-    
     public override var keyOps: [KeyOps] {
         get {
-            return store[KpKeyOps()] as! [KeyOps]
+            return store[KpKeyOps()] as? [KeyOps] ?? []
         }
         set {
             let supportedOps: [KeyOps.Type] = [
@@ -115,13 +114,13 @@ public class CoseSymmetricKey: CoseKey {
     }
     
     // Function to delete a key
-    func delete(key: String) throws {
-        let transformedKey = try SymmetricKeyParam.fromId(for: key)
-
-        if transformedKey != KpKty() {
-            if transformedKey == SymKpK() && store[SymKpK()] == nil {
-                return  // Do nothing
-            } else {
+    func delete(key: AnyHashable) throws {
+        if let key = key as? SymmetricKeyParam {
+            return try delete(key: key.identifier)
+        } else {
+            let transformedKey = try SymmetricKeyParam.fromId(for: key)
+            
+            if transformedKey != KpKty() && transformedKey != SymKpK() {
                 store.removeValue(forKey: key)
                 return
             }

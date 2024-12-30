@@ -10,9 +10,9 @@ public struct PartyInfo {
 
     func encode() -> [CBOR] {
         return [
-            identity?.toCBOR ?? CBOR.null,
-            nonce?.toCBOR ?? CBOR.null,
-            other?.toCBOR ?? CBOR.null
+            CBOR(identity ?? Data()),
+            CBOR(nonce ?? Data()),
+            CBOR(other ?? Data())
         ]
     }
 }
@@ -49,29 +49,33 @@ public struct SuppPubInfo {
     /// - Returns: A CBOR array representing the supplementary public information.
     func encode() throws -> [CBOR] {
         // Convert `protected` to a CBOR.Map by mapping its keys and values
-        let protectedMap: OrderedDictionary<CBOR, CBOR> = OrderedDictionary(
-            uniqueKeysWithValues: try protected.compactMap {
-                if let key = $0.key as? Int, let value = $0.value as? Int {
-                    return (CBOR.unsignedInt(UInt64(key)), CBOR.unsignedInt(UInt64(value)))
-                } else if let key = $0.key as? String, let value = $0.value as? String {
-                    return (CBOR.utf8String(key), CBOR.utf8String(value))
-                } else if let key = $0.key as? Int, let value = $0.value as? String {
-                    return (CBOR.unsignedInt(UInt64(key)), CBOR.utf8String(value))
-                } else if let key = $0.key as? String, let value = $0.value as? Int {
-                    return (CBOR.utf8String(key), CBOR.unsignedInt(UInt64(value)))
-                } else {
-                    throw CoseError.valueError("Invalid key-value pair in `protected`: key=\($0.key), value=\($0.value)")
-                }
-            }
-        )
+//        let protectedMap: OrderedDictionary<CBOR, CBOR> = OrderedDictionary(
+//            uniqueKeysWithValues: try protected.compactMap {
+//                if let key = $0.key as? Int, let value = $0.value as? Int {
+//                    return (CBOR.unsignedInt(UInt64(key)), CBOR.unsignedInt(UInt64(value)))
+//                } else if let key = $0.key as? String, let value = $0.value as? String {
+//                    return (CBOR.utf8String(key), CBOR.utf8String(value))
+//                } else if let key = $0.key as? Int, let value = $0.value as? String {
+//                    return (CBOR.unsignedInt(UInt64(key)), CBOR.utf8String(value))
+//                } else if let key = $0.key as? String, let value = $0.value as? Int {
+//                    return (CBOR.utf8String(key), CBOR.unsignedInt(UInt64(value)))
+//                } else {
+//                    throw CoseError.valueError("Invalid key-value pair in `protected`: key=\($0.key), value=\($0.value)")
+//                }
+//            }
+//        )
         
         var info: [CBOR] = [
             CBOR.unsignedInt(UInt64(keyDataLength * 8)),
-            CBOR.map(protectedMap)
+            CBOR.map(protected.mapKeysToCbor)
         ]
         
         if !other.isEmpty {
-            info.append(try! CBORSerialization.cbor(from: other))
+            do {
+                info.append(try CBORSerialization.cbor(from: other))
+            } catch {
+                throw CoseError.valueError("Failed to encode `other` data: \(error)")
+            }
         }
         return info
     }
@@ -93,7 +97,7 @@ public struct CoseKDFContext {
 
     func encode() throws -> Data {
         var context: [CBOR] = [
-            CBOR.unsignedInt(UInt64(algorithm.identifier)),
+            CBOR(algorithm.identifier),
             CBOR.array(partyUInfo.encode()),
             CBOR.array(partyVInfo.encode()),
             CBOR.array(try suppPubInfo.encode())

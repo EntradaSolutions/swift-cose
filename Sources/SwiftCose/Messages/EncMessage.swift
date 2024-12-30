@@ -48,16 +48,16 @@ public class EncMessage: EncCommon {
     /// Function to decode a COSE_Encrypt message
     /// - Parameter coseObj: The array to decode.
     /// - Returns: The decoded Enc0Message.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> EncMessage {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> EncMessage {
         // Decode base message using the superclass method
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? EncMessage else {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? EncMessage else {
             throw CoseError.invalidMessage("Failed to decode base EncMessage.")
         }
         
         do {
             // Attempt to parse recipients from the first element of coseObj
             if let recipientArray = coseObj.first?.arrayValue {
-                coseObj.removeFirst()
+//                coseObj.removeFirst()
                 for recipient in recipientArray {
                     guard let recipient = recipient.arrayValue else {
                         throw CoseError.valueError("Invalid recipient")

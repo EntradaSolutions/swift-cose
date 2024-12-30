@@ -34,8 +34,8 @@ public class Sign1Message: SignCommon {
     // MARK: - Methods
     
     /// Decodes a COSE Sign1Message from a CBOR object.
-    public override class func fromCoseObject(coseObj: inout [CBOR]) throws -> Sign1Message {
-        guard let msg = try super.fromCoseObject(coseObj: &coseObj) as? Sign1Message else {
+    public override class func fromCoseObject(coseObj: [CBOR]) throws -> Sign1Message {
+        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? Sign1Message else {
             throw CoseError.invalidMessage("Failed to decode base Sign1Message.")
         }
         
@@ -43,7 +43,7 @@ public class Sign1Message: SignCommon {
         guard let signatureData = coseObj.first else {
             throw CoseError.invalidMessage("Missing or invalid signature.")
         }
-        coseObj.removeFirst()
+//        coseObj.removeFirst()
         msg.signature = signatureData.bytesStringValue!
             
         return msg

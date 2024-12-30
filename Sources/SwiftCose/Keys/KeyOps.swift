@@ -1,6 +1,6 @@
 import Foundation
 
-public enum KeyOpsIdentifier: Int, Codable, Equatable {
+public enum KeyOpsIdentifier: Int, CaseIterable, Sendable {
     case sign = 1
     case verify = 2
     case encrypt = 3
