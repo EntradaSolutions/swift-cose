@@ -25,7 +25,16 @@ public class CoseRecipient: CoseMessage {
     
     // MARK: - Abstract Methods
     public class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> CoseRecipient {
-        fatalError("This method must be implemented by subclasses.")
+        let baseMsg = try super.fromCoseObject(coseObj: coseObj)
+        baseMsg.payload = coseObj.last?.bytesStringValue
+        return CoseRecipient(
+            phdr: baseMsg.phdr,
+            uhdr: baseMsg.uhdr,
+            payload: baseMsg.payload!,
+            externalAAD: baseMsg.externalAAD,
+            key: baseMsg.key,
+            recipients: []
+        )
     }
     
     /// Abstract method to compute CEK

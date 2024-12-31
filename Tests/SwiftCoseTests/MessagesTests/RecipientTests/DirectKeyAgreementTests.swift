@@ -27,6 +27,25 @@ struct DirectKeyAgreementTests {
         #expect(keyAgreement.recipients.isEmpty)
     }
     
+    // MARK: - Test fromCoseObject
+    
+    @Test func testFromCoseObject() async throws {
+        let coseArray: CBOR.Array = [
+            CBOR.byteString(Data()),  // Zero-length protected header
+            CBOR.map([
+                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+            ]),
+            CBOR.byteString(Data())  // Zero-length ciphertext
+        ]
+        
+        let recipient = try DirectKeyAgreement.fromCoseObject(coseObj: coseArray, context: "testContext")
+        
+        #expect(recipient.context == "testContext")
+        #expect(recipient.payload!.isEmpty)
+        #expect(recipient.phdr.isEmpty)
+        #expect(recipient.uhdr[Algorithm()] as? CoseAlgorithm == Direct())
+    }
+    
     // MARK: - Test Successful KDF Context
     
     @Test func testKDFContextCreation() async throws {

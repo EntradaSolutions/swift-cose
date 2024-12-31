@@ -355,7 +355,7 @@ public class CoseKey: CustomStringConvertible {
         }
         
         if let alg = self.alg, alg != algorithm {
-            throw CoseError.invalidAlgorithm("Invalid algorithm")
+            throw CoseError.invalidAlgorithm("Invalid algorithm: \(alg) expected \(algorithm)")
         }
         
         if !self.keyOps.isEmpty {

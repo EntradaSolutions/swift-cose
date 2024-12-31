@@ -60,7 +60,13 @@ public class CoseSymmetricKey: CoseKey {
         for (key, value) in optionalParams {
             let kp = try SymmetricKeyParam.fromId(for: key)
             if let parser = kp.valueParser {
-                transformedDict[kp] = try parser(value)
+                if let value = value as? Array<Any> {
+                    for (_, v) in value.enumerated() {
+                        transformedDict[kp] = try parser(v)
+                    }
+                } else {
+                    transformedDict[kp] = try parser(value)
+                }
             } else {
                 transformedDict[kp] = value
             }

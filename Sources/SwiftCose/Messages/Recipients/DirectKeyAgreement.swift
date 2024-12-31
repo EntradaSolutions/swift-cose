@@ -15,31 +15,47 @@ public class DirectKeyAgreement: CoseRecipient {
         
         let msg = try super.fromCoseObject(
             coseObj: coseObj
-        ) as! DirectKeyAgreement
+        )
+        
+        let directKeyAgreementMsg = DirectKeyAgreement(
+            phdr: msg.phdr,
+            uhdr: msg.uhdr,
+            payload: msg.payload ?? Data(),
+            externalAAD: msg.externalAAD,
+            key: msg.key as? CoseSymmetricKey ?? nil
+        )
         
         // Set context if provided
         if let ctx = context {
-            msg.context = ctx
+            directKeyAgreementMsg.context = ctx
         }
         
         // Validate algorithm and protected header
-        guard let alg = try msg.getAttr(Algorithm()) as? CoseAlgorithm else {
+        guard let alg = try directKeyAgreementMsg.getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
         }
         let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
         
         let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_HKDF_256, .ecdhES_HKDF_512]
-        let ephermalKey = try msg.getAttr(EphemeralKey())
+        
+        let ephermalKey: Any?
+        do {
+            ephermalKey = try directKeyAgreementMsg.getAttr(EphemeralKey()) as Any
+        }
+        catch {
+            ephermalKey = nil
+        }
+        
         if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
             throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }
         
         // Ensure there are no recipients
-        guard msg.recipients.isEmpty else {
+        guard directKeyAgreementMsg.recipients.isEmpty else {
             throw CoseError.malformedMessage("Recipient class \(type(of: self)) cannot carry more recipients.")
         }
         
-        return msg
+        return directKeyAgreementMsg
     }
 
     // Encoding logic

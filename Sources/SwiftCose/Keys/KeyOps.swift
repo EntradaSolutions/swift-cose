@@ -55,27 +55,31 @@ public class KeyOps: CoseAttribute {
     /// - Parameter attribute: The identifier or name of the key operation.
     /// - Returns: A specific `KeyOps` instance.
     public static func fromId(for attribute: Any) throws -> KeyOps {
+        print("KeyOps fromId: \(attribute) of type \(type(of: attribute))")
         switch attribute {
-        case let id as Int:
-            // If the identifier is an Int, convert it to KeyOpsIdentifier
-            guard let op = KeyOpsIdentifier(rawValue: id) else {
-                throw CoseError.invalidKeyOps("Unknown operation identifier")
-            }
-            return getInstance(for: op)
-            
-        case let name as String:
-            // If the identifier is a String, attempt to match it to a KeyOpsIdentifier
-            guard let op = KeyOpsIdentifier.fromFullName(name) else {
-                throw CoseError.invalidKeyOps("Unknown operation fullname")
-            }
-            return getInstance(for: op)
-            
-        case let op as KeyOpsIdentifier:
-            // If the identifier is already a KeyOpsIdentifier, get the instance directly
-            return getInstance(for: op)
-            
-        default:
-            throw CoseError.invalidKeyOps("Unsupported identifier type. Must be Int, String, or KeyOpsIdentifier")
+            case let id as Int:
+                // If the identifier is an Int, convert it to KeyOpsIdentifier
+                guard let op = KeyOpsIdentifier(rawValue: id) else {
+                    throw CoseError.invalidKeyOps("Unknown operation identifier")
+                }
+                return getInstance(for: op)
+                
+            case let name as String:
+                // If the identifier is a String, attempt to match it to a KeyOpsIdentifier
+                guard let op = KeyOpsIdentifier.fromFullName(name) else {
+                    throw CoseError.invalidKeyOps("Unknown operation fullname")
+                }
+                return getInstance(for: op)
+                
+            case let op as KeyOpsIdentifier:
+                // If the identifier is already a KeyOpsIdentifier, get the instance directly
+                return getInstance(for: op)
+                    
+            case let type as KeyOps:
+                return type
+                
+            default:
+                throw CoseError.invalidKeyOps("Unsupported identifier type. Must be Int, String, or KeyOpsIdentifier")
         }
     }
 

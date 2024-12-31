@@ -15,23 +15,31 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         
         let msg = try super.fromCoseObject(
             coseObj: coseObj
-        ) as! KeyAgreementWithKeyWrap
+        )
+        
+        let keyAgreementWithKeyWrapMsg = KeyAgreementWithKeyWrap(
+            phdr: msg.phdr,
+            uhdr: msg.uhdr,
+            payload: msg.payload ?? Data(),
+            externalAAD: msg.externalAAD,
+            key: msg.key as? CoseSymmetricKey ?? nil
+        )
         
         // Set context if provided
         if let ctx = context {
-            msg.context = ctx
+            keyAgreementWithKeyWrapMsg.context = ctx
         }
         
         // Check for zero-length payload
-        guard let payload = msg.payload, payload.isEmpty else {
+        guard let payload = keyAgreementWithKeyWrapMsg.payload, payload.isEmpty else {
             throw CoseError.malformedMessage("Recipient class KEY_AGREEMENT_WITH_KEY_WRAP must carry the encrypted CEK in its payload.")
         }
         
-        for recipient in msg.recipients {
+        for recipient in keyAgreementWithKeyWrapMsg.recipients {
             recipient.context = "Rec_Recipient"
         }
         
-        return msg
+        return keyAgreementWithKeyWrapMsg
     }
     
     public override func computeCEK(targetAlgorithm: EncAlgorithm, ops: String) throws -> CoseSymmetricKey? {
@@ -68,9 +76,7 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         var recipient: [Any] = [
             phdrEncoded,
             uhdrEncoded,
-            try self.encrypt(
-                targetAlgorithm: alg.keyWrapFunction as! EncAlgorithm
-            )
+            try encrypt(targetAlgorithm: alg.keyWrapFunction as! EncAlgorithm)
         ]
         
         if !recipients.isEmpty {
@@ -103,7 +109,6 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         }
         
         let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_A128KW, .ecdhES_A192KW, .ecdhES_A256KW]
-        _ = try getAttr(EphemeralKey())
 
         // Ephemeral key generation
         if key == nil {
@@ -161,13 +166,13 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         
         let kek = try CoseSymmetricKey(
             k: try computeKEK(
-                targetAlgorithm: targetAlgorithm,
+                targetAlgorithm: alg.keyWrapFunction as! EncAlgorithm,
                 peerKey: peerKey as! EC2Key,
                 localKey: key as! EC2Key,
                 kexAlgorithm: alg
             ),
             optionalParams: [
-                KpAlg(): targetAlgorithm,
+                KpAlg(): alg,
                 KpKeyOps(): keyOps
             ]
         )

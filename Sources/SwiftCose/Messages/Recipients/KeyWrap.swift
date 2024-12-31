@@ -14,44 +14,58 @@ public class KeyWrap: CoseRecipient {
     // MARK: - Methods
     public override class func fromCoseObject(coseObj: [CBOR], context: String? = nil) throws -> KeyWrap {
         
-        let msg = try super.fromCoseObject(
+        let msg = try CoseRecipient.fromCoseObject(
             coseObj: coseObj
-        ) as! KeyWrap
+        ) as CoseRecipient
+            
+        let keyWrapMsg = KeyWrap(
+            phdr: msg.phdr,
+            uhdr: msg.uhdr,
+            payload: msg.payload ?? Data(),
+            externalAAD: msg.externalAAD,
+            key: msg.key as? CoseSymmetricKey ?? nil,
+            recipients: msg.recipients
+        )
+        
         
         // Set context if provided
         if let ctx = context {
-            msg.context = ctx
+            keyWrapMsg.context = ctx
         }
         
         // Validate algorithm and protected header
-        guard let alg = try msg.getAttr(Algorithm()) as? CoseAlgorithm else {
+        guard let alg = try keyWrapMsg.getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
         }
         let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
         
         let needsZeroPHdr: [CoseAlgorithmIdentifier] = [.aesKW_128, .aesKW_192, .aesKW_256]
-        if needsZeroPHdr.contains(algId!) && !msg.phdr.isEmpty {
+        if needsZeroPHdr.contains(algId!) && !keyWrapMsg.phdr.isEmpty {
             throw CoseError.malformedMessage("Recipient class \(type(of: self)) must carry the encrypted CEK in its payload.")
         }
         
-        for recipient in msg.recipients {
+        for recipient in keyWrapMsg.recipients {
             recipient.context = "Rec_Recipient"
         }
         
-        return msg
+        return keyWrapMsg
     }
     
     // MARK: - Encoding
     
     public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+        guard let alg = targetAlgorithm as? EncAlgorithm else {
+            throw CoseError.invalidAlgorithm("The targetAlgorithm parameter should be included as an EncAlgorithm.")
+        }
+        
         var recipient: [Any] = [
             phdrEncoded,
             uhdrEncoded,
-            try self.encrypt(targetAlgorithm: targetAlgorithm! as! EncAlgorithm)
+            try self.encrypt(targetAlgorithm: alg)
         ]
         
         if !recipients.isEmpty {
-            recipient.append(try recipients.map { try $0.encode(targetAlgorithm: targetAlgorithm) })
+            recipient.append(try recipients.map { try $0.encode(targetAlgorithm: alg) })
         }
         
         return recipient
