@@ -63,34 +63,13 @@ public class CoseBase {
                 return encoded
             }
             
-            guard phdr.isEmpty else { return Data() }
+            guard !phdr.isEmpty else { return Data() }
 
             do {
                 // Convert `_phdr` to a CBOR.Map by mapping its keys and values
-                let protectedHdrMap: OrderedDictionary<CBOR, CBOR> = OrderedDictionary(
-                    uniqueKeysWithValues: try _phdr.compactMap {
-                        if let v = $0.value as? Int {
-                            return (
-                                CBOR.unsignedInt(UInt64($0.key.identifier)),
-                                CBOR.unsignedInt(UInt64(exactly: v)!)
-                            )
-                        } else if let v = $0.value as? String {
-                            return (
-                                CBOR.unsignedInt(UInt64($0.key.identifier)),
-                                CBOR.utf8String(v)
-                            )
-                        } else if let v = $0.value as? Data {
-                            return (
-                                CBOR.unsignedInt(UInt64($0.key.identifier)),
-                                CBOR.byteString(v)
-                            )
-                        } else {
-                            throw CoseError.valueError("Invalid key-value pair in `protected`: key=\($0.key), value=\($0.value)")
-                        }
-                    }
-                )
-                    
-                let encoded = try CBORSerialization.data(from: .map(protectedHdrMap))
+                let protectedHdrMap = CBOR.map((_phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
+                
+                let encoded = try CBORSerialization.data(from: protectedHdrMap)
                 _phdrEncoded = encoded
                 return encoded
             } catch {
@@ -254,26 +233,12 @@ public class CoseBase {
     
     public func hdrRepr() -> (phdr: [AnyHashable: Any], uhdr: [AnyHashable: Any]) {
         var phdr: [String: Any] = _phdr.reduce(into: [:]) { result, element in
-            let keyName: String = element.key.fullname
-            
-//            if let coseAttribute = element.key,  {
-//                keyName = coseAttribute.fullname
-//            } else {
-//                keyName = "\(type(of: element.key))"
-//            }
-            
+            let keyName: String = element.key.fullname            
             result[keyName] = "\(type(of: element.value))"
         }
 
         var uhdr: [String: Any] = _uhdr.reduce(into: [:]) { result, element in
             let keyName: String = element.key.fullname
-            
-//            if let coseAttribute = element.key {
-//                keyName = coseAttribute.fullname
-//            } else {
-//                keyName = "\(type(of: element.key))"
-//            }
-            
             result[keyName] = "\(type(of: element.value))"
         }
 

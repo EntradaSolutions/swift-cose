@@ -1,7 +1,7 @@
 import Foundation
 import PotentCBOR
 
-public enum CoseMessageIdentifier: Int, Codable, Equatable {
+public enum CoseMessageIdentifier: Int, CaseIterable, Sendable {
     case encrypt0 = 16
     case encrypt = 96
     case mac0 = 17
@@ -88,9 +88,6 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
             return _payload
         }
         set {
-            guard newValue == nil || type(of: newValue!) == Data.self else {
-                fatalError("payload must be of type `Data` or `nil`, not \(type(of: newValue!))")
-            }
             _payload = newValue
         }
     }

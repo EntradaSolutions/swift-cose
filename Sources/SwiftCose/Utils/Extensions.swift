@@ -139,26 +139,14 @@ extension String {
 extension Dictionary where Key == AnyHashable, Value == Any {
     var mapKeysToCbor: OrderedDictionary<CBOR, CBOR> {
         return self.reduce(into: [:]) { result, element in
-            if let key = element.key as? String {
-                result[CBOR(key)] = CBOR.fromAny(element.value)
-            } else if let key = element.key as? Int {
-                result[CBOR.unsignedInt(UInt64(key))] = CBOR.fromAny(element.value)
-            } else {
-                result[CBOR.fromAny(element.key)] = CBOR.fromAny(element.value)
-            }
+            result[CBOR.fromAny(element.key)] = CBOR.fromAny(element.value)
         }
     }
 }
 extension Dictionary where Key == AnyHashable, Value == CoseHeaderAttribute {
     var mapKeysToCbor: OrderedDictionary<CBOR, CBOR> {
         return self.reduce(into: [:]) { result, element in
-            if let key = element.key as? String {
-                result[CBOR(key)] = CBOR.unsignedInt(UInt64(element.value.identifier))
-            } else if let key = element.key as? Int {
-                result[CBOR.unsignedInt(UInt64(key))] = CBOR.unsignedInt(UInt64(element.value.identifier))
-            } else {
-                result[CBOR.fromAny(element.key)] = CBOR.unsignedInt(UInt64(element.value.identifier))
-            }
+            result[CBOR.fromAny(element.key)] = CBOR.fromAny(element.value)
         }
     }
 }
@@ -172,8 +160,12 @@ extension CBOR {
             return .unsignedInt(UInt64(intValue))
         } else if let dataValue = value as? Data {
             return .byteString(dataValue)
-        } else if let dictValue = value as? [AnyHashable: Any] {
-            return .map(dictValue.mapKeysToCbor)
+        } else if let dataValue = value as? Data {
+            return .byteString(dataValue)
+        } else if let attrValue = value as? CoseAttribute {
+            return attrValue.identifier >= 0 ?
+                .unsignedInt(UInt64(attrValue.identifier)) : 
+                .negativeInt(UInt64(abs(attrValue.identifier)))
         } else if let dictValue = value as? [AnyHashable: CoseHeaderAttribute] {
             return .map(dictValue.mapKeysToCbor)
         } else {

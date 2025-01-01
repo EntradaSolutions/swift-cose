@@ -205,7 +205,7 @@ public class CoseRecipient: CoseMessage {
         // Create the SuppPubInfo
         let keyLength = algorithm.keyLength
         let suppPubOther = localAttrs[SuppPubOther()] as? Data ?? Data()
-        let suppPub = SuppPubInfo(
+        let suppPub = try SuppPubInfo(
             keyDataLength: keyLength!,
             protected: self.phdr,
             other: suppPubOther

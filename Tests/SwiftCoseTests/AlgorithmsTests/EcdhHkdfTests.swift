@@ -34,7 +34,7 @@ struct EcdhHkdfAlgorithmTests {
         let privateKey = try EC2Key.generateKey(curve: curve)
         let context = CoseKDFContext(
             algorithm: AESCCM1664128(),
-            suppPubInfo: .init(keyDataLength: 32)
+            suppPubInfo: try .init(keyDataLength: 32)
         )
         
         let ecdhHkdf = try EcdhHkdfAlgorithm.fromId(
