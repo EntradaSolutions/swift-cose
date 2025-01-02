@@ -42,6 +42,7 @@ public class MacCommon: CoseMessage {
             externalAAD: externalAAD,
             key: key
         )
+        self.authTag = Data()
     }
 
     // MARK: - Methods

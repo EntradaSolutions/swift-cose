@@ -43,7 +43,7 @@ public class CoseRecipient: CoseMessage {
     }
     
     /// Encoding logic
-    public func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+    public func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [CBOR] {
         fatalError("This method must be implemented by subclasses.")
     }
     
@@ -89,7 +89,7 @@ public class CoseRecipient: CoseMessage {
     }
     
     /// Create a recipient instance based on the COSE object
-    public class func createRecipient(recipient: [CBOR], context: String) throws -> CoseRecipient {
+    public class func createRecipient<T>(recipient: [CBOR], context: String) throws -> T {
         guard recipient.count >= 3 else {
             throw CoseError.invalidMessage("Recipient structure must have at least 3 elements.")
         }
@@ -135,7 +135,7 @@ public class CoseRecipient: CoseMessage {
                 .fromCoseObject(
                     coseObj: coseRecipient,
                     context: context
-                )
+                ) as! T
         } else if uAlg != nil {
             let coseRecipientClass = fromAlgorithm(algorithm: uAlg!)
             let coseRecipient = recipient
@@ -143,7 +143,7 @@ public class CoseRecipient: CoseMessage {
                 .fromCoseObject(
                     coseObj: coseRecipient,
                     context: context
-                )
+                ) as! T
         } else {
             throw CoseError.invalidMessage("No algorithm specified in recipient structure.")
         }

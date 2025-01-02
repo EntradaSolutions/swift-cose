@@ -25,21 +25,31 @@ public class MacMessage: MacCommon {
     
     // MARK: - Methods
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> MacMessage {
-        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? MacMessage else {
-            throw CoseError.invalidMessage("Failed to decode base EncMessage.")
-        }
+        var coseObj = coseObj
+        let recipients = coseObj.popLast()
+        let authTag = coseObj.popLast()
+        let coseMessage = try super.fromCoseObject(
+            coseObj: coseObj
+        )
+        
+        let msg =  MacMessage(
+            phdr: coseMessage.phdr,
+            uhdr: coseMessage.uhdr,
+            payload: coseMessage.payload!,
+            externalAAD: coseMessage.externalAAD,
+            key: coseMessage.key as? CoseSymmetricKey
+        )
         
         // Extract and assign the authentication tag
-        if !coseObj.isEmpty {
-            msg.authTag = coseObj.first!.bytesStringValue!
+        if authTag?.bytesStringValue != nil {
+            msg.authTag = authTag!.bytesStringValue!
         } else {
             throw CoseError.valueError("Missing authentication tag in COSE object.")
         }
 
         // Attempt to decode recipients
         do {
-            if let recipientArray = coseObj.first?.arrayValue {
-//                coseObj.removeFirst()
+            if let recipientArray = recipients?.arrayValue {
                 for recipient in recipientArray {
                     guard let recipient = recipient.arrayValue else {
                         throw CoseError.valueError("Invalid recipient")
@@ -80,7 +90,8 @@ public class MacMessage: MacCommon {
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
                 payload?.toCBOR ?? CBOR.null,
-                computedTag.toCBOR]
+                CBOR.byteString(computedTag)
+            ]
         } else {
             message = [
                 phdrEncoded.toCBOR,
@@ -89,15 +100,12 @@ public class MacMessage: MacCommon {
         }
         
         if !self.recipients.isEmpty {
-            guard try getAttr(Algorithm()) is CoseAlgorithm else {
+            guard let targetAlgorithm = try getAttr(Algorithm()) as? CoseAlgorithm else {
                 throw CoseError.invalidAlgorithm("Algorithm not found in headers")
             }
             
             let recipientData = try recipients.map {
-                try $0
-                    .encode(
-                        message: message
-                    ).toCBOR
+                CBOR.array(try $0.encode(targetAlgorithm: targetAlgorithm))
             }
             message.append(CBOR.array(recipientData))
         }
@@ -108,21 +116,25 @@ public class MacMessage: MacCommon {
     }
     
     public override func computeTag() throws -> Data {
-        guard let targetAlgorithm = try? getAttr(Algorithm()) as? EncAlgorithm else {
-            fatalError("Algorithm not found in headers")
+        guard let targetAlgorithm = try? getAttr(Algorithm()) as? CoseAlgorithm else {
+            throw CoseError.invalidAlgorithm("Algorithm not found in headers")
         }
 
-        let recipientTypes = try! CoseRecipient.verifyRecipients(recipients)
+        let _ = try! CoseRecipient.verifyRecipients(recipients)
 
-        if recipientTypes.contains(where: { $0 is DirectEncryption }) {
+        if recipients.contains(where: { $0 is DirectEncryption }) {
             // Key should already be known
             return try super.computeTag()
-        } else if recipientTypes.contains(where: { $0 is DirectKeyAgreement }) {
-            self.key = try! recipients.first?.computeCEK(targetAlgorithm: targetAlgorithm, ops: "encrypt")
+        } else if recipients.contains(where: { $0 is DirectKeyAgreement }) {
+            self.key = try! recipients.first?
+                .computeCEK(
+                    targetAlgorithm: targetAlgorithm as! EncAlgorithm,
+                    ops: "encrypt"
+                )
             return try super.computeTag()
-        } else if recipientTypes.contains(where: { $0 is KeyWrap }) || recipientTypes.contains(where: { $0 is KeyAgreementWithKeyWrap }) {
+        } else if recipients.contains(where: { $0 is KeyWrap }) || recipients.contains(where: { $0 is KeyAgreementWithKeyWrap }) {
             // Generate random key bytes
-            var keyBytes = Data.randomBytes(count: targetAlgorithm.keyLength!)
+            var keyBytes = Data.randomBytes(count: (targetAlgorithm as! EncAlgorithm).keyLength!)
             
             for recipient in recipients {
                 if recipient.payload?.isEmpty ?? true {
@@ -131,10 +143,10 @@ public class MacMessage: MacCommon {
                     keyBytes = recipient.payload!
                 }
                 if let recipient = recipient as? KeyAgreementWithKeyWrap {
-                    let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm)
+                    let _ = try recipient.encrypt(targetAlgorithm: targetAlgorithm as! EncAlgorithm)
                 } else if let recipient = recipient as? KeyWrap {
                     let _ = try recipient.encrypt(
-                        targetAlgorithm: targetAlgorithm
+                        targetAlgorithm: targetAlgorithm as! EncAlgorithm
                     )
                 } else {
                     throw CoseError.unsupportedRecipient("Unsupported COSE recipient class")

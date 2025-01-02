@@ -45,8 +45,6 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     }
     
     // MARK: - Properties
-    /// External Additional Authenticated Data (AAD).
-    private var _externalAAD: Data = Data()
 
     /// Key associated with the COSE message.
     private var _key: CoseKey?
@@ -60,12 +58,10 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
             return _externalAAD
         }
         set {
-            guard type(of: newValue) == Data.self else {
-                fatalError("externalAAD must be of type `Data`")
-            }
             _externalAAD = newValue
         }
     }
+    private var _externalAAD: Data = Data()
 
     /// The key associated with the COSE message.
     public var key: CoseKey? {
@@ -212,7 +208,7 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
                 .data(
                     from: CBOR
                         .tagged(
-                            CBOR.Tag(rawValue: UInt64(self.cborTag)),
+                            CBOR.Tag(rawValue: UInt64(cborTag)),
                             CBOR.array(message)
                         )
                 )
@@ -223,11 +219,11 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
 
     public func baseStructure(_ structure: inout [CBOR]) {
         if phdr.isEmpty {
-            structure.append(Data().toCBOR)
+            structure.append(CBOR.byteString(Data()))
         } else {
-            structure.append(phdrEncoded.toCBOR)
+            structure.append(CBOR.byteString(phdrEncoded))
         }
 
-        structure.append(externalAAD.toCBOR)
+        structure.append(CBOR.byteString(externalAAD))
     }
 }

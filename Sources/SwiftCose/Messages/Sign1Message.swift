@@ -22,7 +22,7 @@ public class Sign1Message: SignCommon {
                 uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseSymmetricKey? = nil,
+                key: CoseKey? = nil,
                 recipients: [CoseRecipient] = []) {
         super.init(phdr: phdr,
                    uhdr: uhdr,
@@ -35,16 +35,25 @@ public class Sign1Message: SignCommon {
     
     /// Decodes a COSE Sign1Message from a CBOR object.
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> Sign1Message {
-        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? Sign1Message else {
-            throw CoseError.invalidMessage("Failed to decode base Sign1Message.")
-        }
+        var coseObj = coseObj
+        let signature = coseObj.popLast()
+        let coseMessage = try super.fromCoseObject(
+            coseObj: coseObj
+        )
         
-        // Pop the signature from the COSE object
-        guard let signatureData = coseObj.first else {
+        let msg =  Sign1Message(
+            phdr: coseMessage.phdr,
+            uhdr: coseMessage.uhdr,
+            payload: coseMessage.payload!,
+            externalAAD: coseMessage.externalAAD,
+            key: coseMessage.key
+        )
+        
+        guard signature != nil else {
             throw CoseError.invalidMessage("Missing or invalid signature.")
         }
-//        coseObj.removeFirst()
-        msg.signature = signatureData.bytesStringValue!
+        
+        msg.signature = signature!.bytesStringValue!
             
         return msg
     }
@@ -59,14 +68,14 @@ public class Sign1Message: SignCommon {
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
                 payload?.toCBOR ?? Data().toCBOR,
-                computedSignature.toCBOR
+                CBOR.byteString(computedSignature)
             ]
         } else if !signature.isEmpty {
             cborMessage = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
                 payload?.toCBOR ?? Data().toCBOR,
-                signature.toCBOR
+                CBOR.byteString(signature)
             ]
         } else {
             cborMessage = [

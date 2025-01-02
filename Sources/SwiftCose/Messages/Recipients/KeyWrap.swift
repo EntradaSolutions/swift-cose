@@ -53,19 +53,22 @@ public class KeyWrap: CoseRecipient {
     
     // MARK: - Encoding
     
-    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [CBOR] {
         guard let alg = targetAlgorithm as? EncAlgorithm else {
             throw CoseError.invalidAlgorithm("The targetAlgorithm parameter should be included as an EncAlgorithm.")
         }
         
-        var recipient: [Any] = [
-            phdrEncoded,
-            uhdrEncoded,
-            try self.encrypt(targetAlgorithm: alg)
+        var recipient: [CBOR] = [
+            CBOR.byteString(phdrEncoded),
+            CBOR.fromAny(uhdrEncoded),
+            CBOR.byteString(try self.encrypt(targetAlgorithm: alg))
         ]
         
         if !recipients.isEmpty {
-            recipient.append(try recipients.map { try $0.encode(targetAlgorithm: alg) })
+            let recipientData = try recipients.map {
+                CBOR.array(try $0.encode(targetAlgorithm: alg))
+            }
+            recipient.append(CBOR.array(recipientData))
         }
         
         return recipient

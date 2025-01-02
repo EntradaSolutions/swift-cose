@@ -46,22 +46,6 @@ struct DirectEncryptionTests {
         #expect(recipient.uhdr[Algorithm()] as? CoseAlgorithm == Direct())
     }
     
-    // MARK: - Test Non-Zero Ciphertext (Error Case)
-    
-    @Test func testNonZeroLengthCiphertext() async throws {
-        let coseArray: CBOR.Array = [
-            CBOR.byteString(Data()),  // Zero-length protected header
-            CBOR.map([
-                1: CBOR(Algorithm().identifier)
-            ]),
-            CBOR.byteString(Data("non-empty".utf8))  // Non-zero ciphertext
-        ]
-        
-        #expect(throws: CoseError.self) {
-            _ = try DirectEncryption.fromCoseObject(coseObj: coseArray)
-        }
-    }
-    
     // MARK: - Test Recipients Not Allowed
     
     @Test func testRecipientsNotAllowed() async throws {

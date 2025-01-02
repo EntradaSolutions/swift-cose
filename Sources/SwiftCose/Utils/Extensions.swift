@@ -157,9 +157,9 @@ extension CBOR {
         if let stringValue = value as? String {
             return .utf8String(stringValue)
         } else if let intValue = value as? Int {
-            return .unsignedInt(UInt64(intValue))
-        } else if let dataValue = value as? Data {
-            return .byteString(dataValue)
+            return intValue >= 0 ?
+                .unsignedInt(UInt64(intValue)) :
+                .negativeInt(UInt64(abs(intValue)))
         } else if let dataValue = value as? Data {
             return .byteString(dataValue)
         } else if let attrValue = value as? CoseAttribute {

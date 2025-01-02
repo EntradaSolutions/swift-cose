@@ -190,7 +190,7 @@ public class CoseBase {
         let uAttr = uhdr[attribute]
 
         if pAttr == nil && uAttr == nil {
-            throw CoseError.invalidHeader("MALFORMED: different values for the same header parameters in the header buckets")
+            throw CoseError.invalidHeader("MALFORMED: Missing header attribute")
         }
 
         return pAttr ?? uAttr ?? defaultResult

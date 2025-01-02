@@ -68,19 +68,23 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
     
     // MARK: - Encoding
     
-    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [CBOR] {
         guard let alg = try getAttr(Algorithm()) as? EcdhHkdfAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
         
-        var recipient: [Any] = [
-            phdrEncoded,
-            uhdrEncoded,
-            try encrypt(targetAlgorithm: alg.keyWrapFunction as! EncAlgorithm)
+        let encrypted = try encrypt(targetAlgorithm: alg.keyWrapFunction as! EncAlgorithm)
+        var recipient: [CBOR] = [
+            CBOR.byteString(phdrEncoded),
+            CBOR.fromAny(uhdrEncoded),
+            CBOR.fromAny(encrypted)
         ]
         
         if !recipients.isEmpty {
-            recipient.append(try recipients.map { try $0.encode(targetAlgorithm: targetAlgorithm) })
+            let recipientData = try recipients.map {
+                CBOR.array(try $0.encode(targetAlgorithm: targetAlgorithm))
+            }
+            recipient.append(CBOR.array(recipientData))
         }
         
         return recipient

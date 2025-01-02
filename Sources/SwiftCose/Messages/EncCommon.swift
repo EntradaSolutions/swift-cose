@@ -124,7 +124,7 @@ public class EncCommon: CoseMessage {
 
     private func getNonce() throws -> Data {
         // Attempt to retrieve the IV attribute
-        let nonce = try getAttr(IV()) as? String
+        let nonce = try getAttr(IV()) as? Data
         
         if nonce == nil, let baseIV = self.key?.baseIV, !baseIV.isEmpty {
             // Retrieve the PartialIV attribute
@@ -148,6 +148,6 @@ public class EncCommon: CoseMessage {
             throw CoseError.invalidIV("No IV found")
         }
         
-        return nonce!.hexStringToData
+        return nonce!
     }
 }

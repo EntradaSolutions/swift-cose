@@ -8,13 +8,18 @@ public class Mac0Message: MacCommon {
     public override var cborTag: Int { 17 }
 
     // MARK: - Initialization
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
+    public override init(phdr: [CoseHeaderAttribute: Any]? = nil,
                 uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseSymmetricKey? = nil,
-                authTag: Data? = nil) {
-        super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
+                key: CoseSymmetricKey? = nil) {
+        super.init(
+            phdr: phdr,
+            uhdr: uhdr,
+            payload: payload,
+            externalAAD: externalAAD,
+            key: key
+        )
     }
 
     // MARK: - Methods
@@ -24,16 +29,20 @@ public class Mac0Message: MacCommon {
     ///   - allowUnknownAttributes: Flag to allow unknown attributes.
     /// - Returns: A decoded Mac0Message instance.
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> Mac0Message {
-        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? Mac0Message else {
-            throw CoseError.invalidMessage("Failed to decode base Mac0Message.")
-        }
-
-        // Pop the authTag from the COSE object
-        guard let authTagData = coseObj.first else {
-            throw CoseError.invalidMessage("Missing or invalid authTag.")
-        }
-//        coseObj.removeFirst()
-        msg.authTag = authTagData.bytesStringValue!
+        var coseObj = coseObj
+        let authTag = coseObj.popLast()
+        let coseMessage = try super.fromCoseObject(
+            coseObj: coseObj
+        )
+        
+        let msg =  Mac0Message(
+            phdr: coseMessage.phdr,
+            uhdr: coseMessage.uhdr,
+            payload: coseMessage.payload!,
+            externalAAD: coseMessage.externalAAD,
+            key: coseMessage.key as? CoseSymmetricKey
+        )
+        msg.authTag = authTag!.bytesStringValue!
         
         return msg
     }
@@ -52,12 +61,14 @@ public class Mac0Message: MacCommon {
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
                 payload?.toCBOR ?? CBOR.null,
-                computedTag.toCBOR]
+                CBOR.fromAny(computedTag)
+            ]
         } else {
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? CBOR.null]
+                payload?.toCBOR ?? CBOR.null
+            ]
         }
         
         let result = try super.encode(message: message, tag: tag)

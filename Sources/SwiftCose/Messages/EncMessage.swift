@@ -57,7 +57,6 @@ public class EncMessage: EncCommon {
         do {
             // Attempt to parse recipients from the first element of coseObj
             if let recipientArray = coseObj.first?.arrayValue {
-//                coseObj.removeFirst()
                 for recipient in recipientArray {
                     guard let recipient = recipient.arrayValue else {
                         throw CoseError.valueError("Invalid recipient")
@@ -98,21 +97,23 @@ public class EncMessage: EncCommon {
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
-                encrypted.toCBOR]
+                CBOR.byteString(encrypted)
+            ]
         } else {
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? CBOR.null]
+                payload?.toCBOR ?? CBOR.null
+            ]
         }
         
         if !self.recipients.isEmpty {
-            guard try getAttr(Algorithm()) is CoseAlgorithm else {
+            guard let targetAlgorithm = try getAttr(Algorithm()) as? EncAlgorithm else {
                 throw CoseError.invalidAlgorithm("Algorithm not found in headers")
             }
             
             let recipientData = try recipients.map {
-                try $0.encode(message: message).toCBOR
+                CBOR.array(try $0.encode(targetAlgorithm: targetAlgorithm))
             }
             message.append(CBOR.array(recipientData))
         }

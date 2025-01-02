@@ -43,25 +43,44 @@ public class CoseSignMessage: CoseMessage {
     ///   - allowUnknownAttributes: Whether to allow unknown attributes.
     /// - Returns: The decoded SignMessage.
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> CoseSignMessage {
-        // Attempt to decode the base class message
-        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? CoseSignMessage else {
-            throw CoseError.invalidMessage("Failed to decode base CoseSignMessage.")
-        }
-
-        var signers: [CoseSignature] = []
+        var coseObj = coseObj
+        let signers = coseObj.popLast()
+        let coseMessage = try super.fromCoseObject(
+            coseObj: coseObj
+        )
         
-        // Pop the signature from the COSE object
-        guard let signerArray = coseObj.first?.arrayValue  else {
+        let msg =  CoseSignMessage(
+            phdr: coseMessage.phdr,
+            uhdr: coseMessage.uhdr,
+            payload: coseMessage.payload!
+        )
+        
+        guard signers != nil  else {
             throw CoseError.invalidMessage("Missing or invalid signers.")
         }
         
-        for signerCbor in signerArray {
-            if let signerCborArray = signerCbor.arrayValue {
-                signers.append(try CoseSignature.fromCoseObject(coseObj: signerCborArray))
+        // Attempt to decode signers
+        do {
+            if let signersArray = signers?.arrayValue {
+                for signer in signersArray {
+                    guard let signer = signer.arrayValue else {
+                        throw CoseError.valueError("Invalid signer")
+                    }
+                    guard signer.count >= 3 else {
+                        throw CoseError.valueError("Invalid signer")
+                    }
+                    msg.signers
+                        .append(try CoseSignature.fromCoseObject(coseObj: signer))
+                }
+            } else {
+                msg.signers = [] // No signers present
             }
+        } catch {
+            throw CoseError
+                .valueError(
+                    "Failed to decode signers. \(error.localizedDescription)"
+                )
         }
-        
-        msg.signers = signers
         return msg
     }
     

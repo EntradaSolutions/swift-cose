@@ -172,6 +172,16 @@ public class CoseAlgorithm: CoseAttribute {
                 }
                 return getInstance(for: type)
                 
+            case let id as UInt64:
+                // Ensure UInt64 fits within Int bounds
+                guard id <= Int64(Int.max) else {
+                    throw CoseError.invalidKeyType("UInt64 value exceeds Int max limit")
+                }
+                guard let type = CoseAlgorithmIdentifier(rawValue: Int(id)) else {
+                    throw CoseError.invalidKeyType("Unknown algorithm identifier")
+                }
+                return getInstance(for: type)
+                
             case let name as String:
                 // If the identifier is a String, attempt to match it to a CoseAlgorithmIdentifier
                 guard let alg = CoseAlgorithmIdentifier.fromFullName(name) else {
@@ -188,9 +198,8 @@ public class CoseAlgorithm: CoseAttribute {
                     throw CoseError.invalidKeyType("Unknown algorithm identifier")
                 }
                 return getInstance(for: keyType)
-                
             default:
-                throw CoseError.invalidAlgorithm("Unsupported identifier type. Must be Int, String, or CoseAlgorithmIdentifier")
+                throw CoseError.invalidAlgorithm("Unsupported identifier type. Must be Int, String, or CoseAlgorithmIdentifier. Type: \(type(of: attribute))")
         }
     }
     

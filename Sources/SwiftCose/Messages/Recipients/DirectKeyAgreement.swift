@@ -59,7 +59,7 @@ public class DirectKeyAgreement: CoseRecipient {
     }
 
     // Encoding logic
-    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [CBOR] {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
@@ -93,15 +93,17 @@ public class DirectKeyAgreement: CoseRecipient {
             throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }
         
-        var recipient: [Any] = [
-            phdrEncoded,
-            uhdrEncoded,
-            Data()
+        var recipient: [CBOR] = [
+            CBOR.byteString(phdrEncoded),
+            CBOR.fromAny(uhdrEncoded),
+            CBOR.byteString(Data())
         ]
 
         if !recipients.isEmpty {
-            let encodedRecipients = try recipients.map { try $0.encode() }
-            recipient.append(encodedRecipients)
+            let encodedRecipients = try recipients.map {
+                CBOR.array(try $0.encode(targetAlgorithm: alg))
+            }
+            recipient.append(CBOR.array(encodedRecipients))
         }
 
         return recipient

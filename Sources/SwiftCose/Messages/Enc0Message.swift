@@ -32,9 +32,17 @@ public class Enc0Message: EncCommon {
     /// - Parameter coseObj: The array to decode.
     /// - Returns: The decoded Enc0Message.
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> Enc0Message {
-        return try super.fromCoseObject(
+        let coseObject = try super.fromCoseObject(
             coseObj: coseObj
-        ) as! Enc0Message
+        )
+        
+        return Enc0Message(
+            phdr: coseObject.phdr,
+            uhdr: coseObject.uhdr,
+            payload: coseObject.payload ?? Data(),
+            externalAAD: coseObject.externalAAD,
+            key: coseObject.key as? CoseSymmetricKey
+        )
     }
 
     // MARK: - Encoding
@@ -51,12 +59,14 @@ public class Enc0Message: EncCommon {
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
-                encrypted.toCBOR]
+                CBOR.byteString(encrypted)
+            ]
         } else {
             message = [
                 phdrEncoded.toCBOR,
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? CBOR.null]
+                payload?.toCBOR ?? CBOR.null
+            ]
         }
         
         let result = try super.encode(message: message, tag: tag)

@@ -21,7 +21,7 @@ public class CoseSignature: SignCommon {
                 uhdr: [CoseHeaderAttribute: Any]? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
-                key: CoseSymmetricKey? = nil,
+                key: CoseKey? = nil,
                 authTag: Data? = nil) {
         super.init(phdr: phdr, uhdr: uhdr, payload: payload, externalAAD: externalAAD, key: key)
     }
@@ -29,10 +29,15 @@ public class CoseSignature: SignCommon {
     // MARK: - Methods
     /// Parses COSE_Signature objects
     public override class func fromCoseObject(coseObj: [CBOR]) throws -> CoseSignature {
-        guard let msg = try super.fromCoseObject(coseObj: coseObj) as? CoseSignature else {
-            throw CoseError.invalidMessage("Failed to decode base CoseSignature.")
-        }
-        return msg
+        let coseMsg = try super.fromCoseObject(coseObj: coseObj)
+        
+        return CoseSignature(
+            phdr: coseMsg.phdr,
+            uhdr: coseMsg.uhdr,
+            payload: coseMsg.payload!,
+            externalAAD: coseMsg.externalAAD,
+            key: coseMsg.key
+        )
     }
     
     /// Creates the signature structure.
@@ -45,25 +50,25 @@ public class CoseSignature: SignCommon {
         
         var signStructure: [CBOR] = [
             CBOR.utf8String(parent.context),
-            parent.phdrEncoded.toCBOR
+            CBOR.fromAny(parent.phdrEncoded)
         ]
         
         if !phdrEncoded.isEmpty {
-            signStructure.append(phdrEncoded.toCBOR)
+            signStructure.append(CBOR.fromAny(phdrEncoded))
         }
         
-        signStructure.append(externalAAD.toCBOR)
+        signStructure.append(CBOR.fromAny(externalAAD))
         
         if detachedPayload == nil {
             guard let parentPayload = parent.payload else {
                 throw CoseError.invalidMessage("Missing payload and no detached payload provided")
             }
-            signStructure.append(parentPayload.toCBOR)
+            signStructure.append(CBOR.fromAny(parentPayload))
         } else {
-            guard parent.payload == nil else {
+            guard parent.payload == nil || parent.payload == Data() else {
                 throw CoseError.invalidMessage("Detached payload must be None when payload is set")
             }
-            signStructure.append(detachedPayload!.toCBOR)
+            signStructure.append(CBOR.fromAny(detachedPayload!))
         }
         
         return try CBORSerialization.data(from: .array(signStructure))
@@ -77,7 +82,7 @@ public class CoseSignature: SignCommon {
         return [
             phdrEncoded.toCBOR,
             CBOR.fromAny(uhdrEncoded),
-            computedSignature.toCBOR
+            CBOR.fromAny(computedSignature)
         ]
     }
     

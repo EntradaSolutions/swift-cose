@@ -39,6 +39,23 @@ struct CoseBaseTests {
         #expect(coseBase.uhdr.isEmpty, "Unprotected header should be empty.")
     }
     
+    // MARK: - From Cose Object Tests
+    
+    @Test func testFromCoseObject() async throws {
+        let coseArray: CBOR.Array = [
+            CBOR.byteString(Data()),  // Zero-length protected header
+            CBOR.map([
+                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+            ]),
+            CBOR.byteString(Data())  // Zero-length ciphertext
+        ]
+        
+        let coseBase = try CoseBase.fromCoseObject(coseObj: coseArray)
+        
+        #expect(coseBase.phdr.isEmpty)
+        #expect(coseBase.uhdr[Algorithm()] as? CoseAlgorithm == Direct())
+    }
+    
     // MARK: - Protected Header Tests
     
     @Test func testUpdateProtectedHeader() async throws {

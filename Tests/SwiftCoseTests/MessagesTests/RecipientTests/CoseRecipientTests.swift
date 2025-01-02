@@ -75,7 +75,7 @@ struct CoseRecipientTests {
             CBOR.byteString(Data())  // zero-length ciphertext for DIRECT_ENCRYPTION
         ]
         
-        let recipient = try CoseRecipient.createRecipient(recipient: coseArray, context: "testContext")
+        let recipient: DirectEncryption = try CoseRecipient.createRecipient(recipient: coseArray, context: "testContext")
 
         #expect(recipient.context == "testContext")
         #expect(recipient.uhdr[Algorithm()] as? CoseAlgorithm == Direct())
@@ -91,7 +91,10 @@ struct CoseRecipientTests {
         ]
         
         #expect(throws: CoseError.self) {
-            _ = try CoseRecipient.createRecipient(recipient: coseArray, context: "testContext")
+            let _: DirectEncryption = try CoseRecipient.createRecipient(
+                recipient: coseArray,
+                context: "testContext"
+            )
         }
     }
     

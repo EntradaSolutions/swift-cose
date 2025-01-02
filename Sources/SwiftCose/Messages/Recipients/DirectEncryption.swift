@@ -74,7 +74,7 @@ public class DirectEncryption: CoseRecipient {
     }
     
     // Encoding logic for DirectEncryption
-    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [Any] {
+    public override func encode(targetAlgorithm: CoseAlgorithm? = nil) throws -> [CBOR] {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Message must carry an algorithm parameter when using DIRECT_ENCRYPTION mode.")
         }
@@ -89,9 +89,9 @@ public class DirectEncryption: CoseRecipient {
         }
 
         return [
-            phdrEncoded,
-            uhdrEncoded,
-            Data()
+            CBOR.byteString(phdrEncoded),
+            CBOR.fromAny(uhdrEncoded),
+            CBOR.byteString(Data())
         ]
     }
 
