@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftCose",
+    name: "SwiftCOSE",
     platforms: [
       .iOS(.v14),
       .macOS(.v13),
@@ -14,8 +14,8 @@ let package = Package(
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "SwiftCose",
-            targets: ["SwiftCose"]),
+            name: "SwiftCOSE",
+            targets: ["SwiftCOSE"]),
     ],
     dependencies: [
         .package(url: "https://github.com/outfoxx/PotentCodables.git", .upToNextMajor(from: "3.5.0")),
@@ -32,7 +32,7 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "SwiftCose",
+            name: "SwiftCOSE",
             dependencies: [
                 "PotentCodables",
                 .product(name: "Digest", package: "digest"),
@@ -46,8 +46,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "SwiftCoseTests",
-            dependencies: ["SwiftCose"],
+            name: "SwiftCOSETests",
+            dependencies: ["SwiftCOSE"],
             resources: [
                .copy("data")
            ]
