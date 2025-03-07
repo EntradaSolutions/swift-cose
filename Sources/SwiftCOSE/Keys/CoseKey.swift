@@ -64,7 +64,7 @@ public class CoseKey: CustomStringConvertible {
     }
     
     // MARK: - Initialization
-    init(keyDict: [AnyHashable: Any]) {
+    public init(keyDict: [AnyHashable: Any]) {
         self.store = keyDict
         if keyDict[KpKeyOps()] != nil {
             self.store.removeValue(forKey: KpKeyOps())
@@ -126,7 +126,7 @@ public class CoseKey: CustomStringConvertible {
     }
     
     // MARK: - Base64 Encoding/Decoding
-    static func base64decode(_ input: String) -> Data? {
+    public static func base64decode(_ input: String) -> Data? {
         var normalizedInput = input.replacingOccurrences(of: "-", with: "+")
                                    .replacingOccurrences(of: "_", with: "/")
         switch normalizedInput.count % 4 {
@@ -142,7 +142,7 @@ public class CoseKey: CustomStringConvertible {
         return Data(base64Encoded: normalizedInput)
     }
     
-    static func base64encode(_ data: Data) -> String {
+    public static func base64encode(_ data: Data) -> String {
         return data.base64EncodedString()
     }
     
@@ -282,7 +282,7 @@ public class CoseKey: CustomStringConvertible {
         }
     }
     
-    class func extractFromDict<T: KeyParam>(
+    public class func extractFromDict<T: KeyParam>(
         _ coseKey: [AnyHashable: Any],
         parameter: T,
         defaultValue: Any? = Data()
@@ -298,7 +298,7 @@ public class CoseKey: CustomStringConvertible {
         }
     }
     
-    class func removeFromDict<T: KeyParam>(
+    public class func removeFromDict<T: KeyParam>(
         _ coseKey: inout [AnyHashable: Any],
         parameter: T
     ) {
@@ -368,7 +368,7 @@ public class CoseKey: CustomStringConvertible {
     }
     
     // MARK: - Helper Methods
-    func keyRepr() -> [AnyHashable: Any] {
+    public func keyRepr() -> [AnyHashable: Any] {
         var names: [String: Any] = [:]
         
         // Sorting keys and transforming the dictionary

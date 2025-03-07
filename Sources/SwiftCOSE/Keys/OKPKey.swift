@@ -26,7 +26,7 @@ public class OKPKey: CoseKey {
     
     // MARK: - x Property
     /// The mandatory `OKPKpX` attribute of the COSE OKP Key object.
-    var x: Data? {
+    public var x: Data? {
         get {
             return store[OKPKpX()] as? Data ?? nil
         }
@@ -37,7 +37,7 @@ public class OKPKey: CoseKey {
     
     // MARK: - d Property
     /// The mandatory`OKPKpD` attribute of the COSE OKP Key object.
-    var d: Data? {
+    public var d: Data? {
         get {
             return store[OKPKpD()] as? Data ?? nil
         }

@@ -151,7 +151,7 @@ extension Dictionary where Key == AnyHashable, Value == CoseHeaderAttribute {
     }
 }
 
-// MARK: - Dictionary Extensions
+// MARK: - CBOR Extensions
 extension CBOR {
     static func fromAny(_ value: Any) -> CBOR {
         if let stringValue = value as? String {

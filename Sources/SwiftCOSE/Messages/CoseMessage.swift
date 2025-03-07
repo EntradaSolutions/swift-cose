@@ -10,7 +10,7 @@ public enum CoseMessageIdentifier: Int, CaseIterable, Sendable {
     case sign = 98
     
     /// Returns the appropriate `CoseMessageIdentifier` for the given fullname.
-    /// - Parameter fullname: The string fullname of the algorithm.
+    /// - Parameter fullName: The string fullname of the algorithm.
     /// - Returns: The corresponding `CoseMessageIdentifier` if found, otherwise nil.
     public static func fromFullName(_ fullName: String) -> CoseMessageIdentifier? {
         switch fullName {
