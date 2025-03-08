@@ -55,7 +55,6 @@ public class KeyOps: CoseAttribute {
     /// - Parameter attribute: The identifier or name of the key operation.
     /// - Returns: A specific `KeyOps` instance.
     public static func fromId(for attribute: Any) throws -> KeyOps {
-        print("KeyOps fromId: \(attribute) of type \(type(of: attribute))")
         switch attribute {
             case let id as Int:
                 // If the identifier is an Int, convert it to KeyOpsIdentifier

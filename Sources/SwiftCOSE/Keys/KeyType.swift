@@ -68,6 +68,10 @@ public class KTY: CoseAttribute {
            case let type as KeyTypeIdentifier:
                // If the identifier is already a KeyTypeIdentifier, get the instance directly
                return getInstance(for: type)
+               
+           case let kty as KTY:
+               // If the identifier is already a KTY get the instance directly
+               return kty
 
            default:
                throw CoseError.invalidKeyType("Unsupported identifier type. Must be Int, String, or KeyTypeIdentifier")

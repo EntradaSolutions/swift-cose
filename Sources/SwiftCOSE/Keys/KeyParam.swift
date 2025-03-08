@@ -55,32 +55,23 @@ public class KeyParam: CoseAttribute {
     /// - Returns: An instance of the corresponding KeyParam subclass.
     public class func fromId(for identifier: Any) throws -> KeyParam {
         switch identifier {
-        case let id as Int:
-            guard let keyType = KeyParamIdentifier(rawValue: id) else {
-                throw CoseError.invalidKeyType("Unknown KeyParam identifier")
-            }
-            return getInstance(for: keyType)
-        case let id as UInt64:
-            // Ensure UInt64 fits within Int bounds
-            guard id <= UInt64(Int.max) else {
-                throw CoseError.invalidKeyType("UInt64 value exceeds Int max limit")
-            }
-            guard let type = KeyParamIdentifier(rawValue: Int(id)) else {
-                throw CoseError.invalidKeyType("Unknown KeyParam identifier")
-            }
-            return getInstance(for: type)
-                
-        case let name as String:
-            // If the identifier is a String, attempt to match it to a KeyParamIdentifier
-            guard let type = KeyParamIdentifier.fromFullName(name) else {
-                throw CoseError.invalidKeyType("Unknown type fullname")
-            }
-            return getInstance(for: type)
-                
-        case let type as KeyParamIdentifier:
-            return getInstance(for: type)
-        default:
-            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+            case let id as any BinaryInteger:
+                guard let keyType = KeyParamIdentifier(rawValue: Int(id)) else {
+                    throw CoseError.invalidKeyType("Unknown KeyParam identifier: \(id)")
+                }
+                return getInstance(for: keyType)
+                    
+            case let name as String:
+                // If the identifier is a String, attempt to match it to a KeyParamIdentifier
+                guard let type = KeyParamIdentifier.fromFullName(name) else {
+                    throw CoseError.invalidKeyType("Unknown type fullname")
+                }
+                return getInstance(for: type)
+                    
+            case let type as KeyParamIdentifier:
+                return getInstance(for: type)
+            default:
+                throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
         }
     }
     
@@ -325,22 +316,26 @@ public class OKPKeyParam: KeyParam {
     /// Returns the specific OKPKeyParam subclass for a given identifier.
     public override class func fromId(for identifier: Any) throws -> KeyParam {
         switch identifier {
-        case let id as Int:
-            guard let keyType = OKPKeyParamIdentifier(rawValue: id) else {
-                throw CoseError.invalidKeyType("Unknown OKPKeyParam identifier")
-            }
-            return getInstance(for: keyType)
+            case let id as Int:
+                guard let keyType = OKPKeyParamIdentifier(rawValue: id) else {
+                    throw CoseError.invalidKeyType("Unknown OKPKeyParam identifier")
+                }
+                return getInstance(for: keyType)
 
-        case let name as String:
-            guard let type = OKPKeyParamIdentifier.fromFullName(name) else {
-                throw CoseError.invalidKeyType("Unknown type fullname")
-            }
-            return getInstance(for: type)
+            case let name as String:
+                guard let type = OKPKeyParamIdentifier.fromFullName(name) else {
+                    throw CoseError.invalidKeyType("Unknown type fullname")
+                }
+                return getInstance(for: type)
 
-        case let type as OKPKeyParamIdentifier:
-            return getInstance(for: type)
-        default:
-            throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
+            case let type as OKPKeyParamIdentifier:
+                return getInstance(for: type)
+                    
+            case let keyParam as KeyParam:
+                // If the identifier is already a KeyParam get the instance directly
+                return keyParam
+            default:
+                throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")
         }
     }
 

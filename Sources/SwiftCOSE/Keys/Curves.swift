@@ -87,26 +87,30 @@ public class CoseCurve: CoseAttribute {
     /// - Returns: A specific `CoseCurve` instance.
     public static func fromId(for attribute: Any) throws -> CoseCurve {
         switch attribute {
-        case let id as any BinaryInteger:
-            // If the identifier is an Int, convert it to CoseCurveIdentifier
-            guard let curve = CoseCurveIdentifier(rawValue: id as! Int) else {
-                throw CoseError.invalidCurve("Unknown curve identifier")
-            }
-            return getInstance(for: curve)
-            
-        case let name as String:
-            // If the identifier is a String, attempt to match it to a CoseCurveIdentifier
-            guard let curve = CoseCurveIdentifier.fromFullName(name) else {
-                throw CoseError.invalidCurve("Unknown curve fullname")
-            }
-            return getInstance(for: curve)
-            
-        case let curve as CoseCurveIdentifier:
-            // If the identifier is already a CoseCurveIdentifier, get the instance directly
-            return getInstance(for: curve)
-            
-        default:
-            throw CoseError.invalidCurve("Unsupported identifier type. Must be Int, String, or CoseCurveIdentifier")
+            case let id as any BinaryInteger:
+                // If the identifier is an Int, convert it to CoseCurveIdentifier
+                guard let curve = CoseCurveIdentifier(rawValue: Int(id)) else {
+                    throw CoseError.invalidCurve("Unknown curve identifier")
+                }
+                return getInstance(for: curve)
+                
+            case let name as String:
+                // If the identifier is a String, attempt to match it to a CoseCurveIdentifier
+                guard let curve = CoseCurveIdentifier.fromFullName(name) else {
+                    throw CoseError.invalidCurve("Unknown curve fullname")
+                }
+                return getInstance(for: curve)
+                
+            case let curve as CoseCurve:
+                // If the identifier is already a CoseCurve get the instance directly
+                return curve
+                
+            case let curve as CoseCurveIdentifier:
+                // If the identifier is already a CoseCurveIdentifier, get the instance directly
+                return getInstance(for: curve)
+                
+            default:
+                throw CoseError.invalidCurve("Unsupported identifier type. Must be Int, String, or CoseCurveIdentifier")
         }
     }
 

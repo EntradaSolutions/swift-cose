@@ -27,6 +27,23 @@ struct CoseKeyTests {
     }
     
     @Test
+    func testCoseKeyFromDictionary() async throws {
+        let verificationKeyData = "60545b786d3a6f903158e35aae9b86548a99bc47d4b0a6f503ab5e78c1a9bbfc"
+        
+        let coseKeyDict = [
+            KpKty(): KtyOKP(),
+            OKPKpCurve(): Ed25519Curve(),
+            KpKeyOps(): [SignOp(), VerifyOp()],
+            OKPKpX(): verificationKeyData
+        ] as [AnyHashable : Any]
+
+        let coseKey = try CoseKey.fromDictionary(coseKeyDict)
+        
+        #expect(coseKey != nil)
+        #expect(coseKey.kty == KtyOKP())
+    }
+    
+    @Test
     func testCoseKeyWithEmptyDict() async throws {
         let coseKey = CoseKey(keyDict: [:])
         
@@ -90,6 +107,19 @@ struct CoseKeyTests {
         #expect(decodedKey!.kty == KtyReserved())
         #expect(decodedKey!.alg == Direct())
         #expect(decodedKey!.kid == Data([0x01, 0x02]))
+    }
+    
+    @Test
+    func testCoseKeyDecodeFromHex() async throws {
+        let key = "a401010327200621582060545b786d3a6f903158e35aae9b86548a99bc47d4b0a6f503ab5e78c1a9bbfc"
+        
+        let decodedKey = try CoseKey.decode(Data(hex: key)) as! OKPKey
+        let verificationKey = decodedKey.store[OKPKpX()] as! Data
+        
+        #expect(decodedKey != nil)
+        #expect(decodedKey.kty == KtyOKP())
+        #expect(verificationKey != nil)
+        #expect(verificationKey == decodedKey.x)
     }
     
     @Test

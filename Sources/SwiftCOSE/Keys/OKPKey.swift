@@ -84,7 +84,11 @@ public class OKPKey: CoseKey {
         for (key, value) in optionalParams {
             let kp = try OKPKeyParam.fromId(for: key)
             if let parser = kp.valueParser {
-                transformedDict[kp] = try parser(value)
+                if value is Array<AnyHashable> {
+                    transformedDict[kp] = try (value as! Array<AnyHashable>).map { try parser($0) }
+                } else {
+                    transformedDict[kp] = try parser(value)
+                }
             } else {
                 transformedDict[kp] = value
             }

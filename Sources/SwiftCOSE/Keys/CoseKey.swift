@@ -20,7 +20,16 @@ public class CoseKey: CustomStringConvertible {
     
     public var keyOps: [KeyOps] {
         get {
-            return store[KpKeyOps()] as? [KeyOps] ?? []
+            let value = store.first(where: {
+                $0.key == KpKeyOps() as AnyHashable || $0.key == KpKeyOps().identifier as AnyHashable || $0.key == KpKeyOps().fullname as AnyHashable
+            })?.value
+            
+            if let value = value {
+                return (value as! Array<Any>).map {
+                    try! KeyOps.fromId(for: $0)
+                }
+            }
+            return []
         }
         set {
             store[KpKeyOps()] = newValue
@@ -29,7 +38,14 @@ public class CoseKey: CustomStringConvertible {
     
     public var kty: KTY? {
         get {
-            return store[KpKty()] as? KTY
+            let value = store.first(where: {
+                $0.key == KpKty() as AnyHashable || $0.key == KpKty().identifier as AnyHashable || $0.key == KpKty().fullname as AnyHashable
+            })?.value
+            
+            if let value = value {
+                return try! KTY.fromId(for: value)
+            }
+            return nil
         }
         set {
             store[KpKty()] = newValue
@@ -38,7 +54,14 @@ public class CoseKey: CustomStringConvertible {
     
     public var alg: CoseAlgorithm? {
         get {
-            return store[KpAlg()] as? CoseAlgorithm
+            let value = store.first(where: {
+                $0.key == KpAlg() as AnyHashable || $0.key == KpAlg().identifier as AnyHashable || $0.key == KpAlg().fullname as AnyHashable
+            })?.value
+            
+            if let value = value {
+                return try! CoseAlgorithm.fromId(for: value)
+            }
+            return nil
         }
         set {
             store[KpAlg()] = newValue
@@ -47,7 +70,8 @@ public class CoseKey: CustomStringConvertible {
     
     public var kid: Data? {
         get {
-            return store[KpKid()] as? Data
+            return store
+                .first(where: { $0.key == KpKid() as AnyHashable || $0.key == KpKid().identifier as AnyHashable || $0.key == KpKid().fullname as AnyHashable })?.value as? Data
         }
         set {
             store[KpKid()] = newValue
@@ -56,7 +80,8 @@ public class CoseKey: CustomStringConvertible {
     
     public var baseIV: Data? {
         get {
-            return store[KpBaseIV()] as? Data
+            return store
+                .first(where: { $0.key == KpBaseIV() as AnyHashable || $0.key == KpBaseIV().identifier as AnyHashable || $0.key == KpBaseIV().fullname as AnyHashable })?.value as? Data
         }
         set {
             store[KpBaseIV()] = newValue
@@ -77,9 +102,9 @@ public class CoseKey: CustomStringConvertible {
     /// - Returns: A specific `CoseKey` instance.
     public static func fromId(for attribute: Any) throws -> CoseKey.Type {
        switch attribute {
-           case let id as Int:
+           case let id as any BinaryInteger:
                // If the identifier is an Int, convert it to KeyTypeIdentifier
-               guard let type = KeyTypeIdentifier(rawValue: id) else {
+               guard let type = KeyTypeIdentifier(rawValue: Int(id)) else {
                    throw CoseError.invalidKeyType("Unknown type identifier")
                }
                return getInstance(for: type)
@@ -187,26 +212,11 @@ public class CoseKey: CustomStringConvertible {
     public static func decode(_ received: Data) throws -> CoseKey? {
         let cbor = try CBORSerialization.cbor(from: received)
         let mapValue = cbor.mapValue ?? [:]
-        let dict = try mapValue.reduce(into: [AnyHashable: Any]()) { result, entry in
-            
-            var key: KeyParam
-//            let key = try KeyParam.fromId(for: entry.key.unwrapped!)
-            
+        let dict = mapValue.reduce(into: [AnyHashable: Any]()) { result, entry in
             let k = entry.key.unwrapped!
             let v = entry.value.unwrapped!
             
-            if let intKey = k as? UInt64 {
-                key = try KeyParam.fromId(for: intKey)
-            } else if let stringKey = k as? String {
-                key = try KeyParam.fromId(for: stringKey)
-            } else {
-                key = k as! KeyParam
-            }
-            
-            let value = try key.valueParser!(v)
-//            let key = entry.key.unwrapped as? AnyHashable ?? "" as AnyHashable
-//            let value = entry.value.unwrapped
-            result[key] = value
+            result[k as! AnyHashable] = v
         }
         return try fromDictionary(dict)
     }
@@ -217,9 +227,14 @@ public class CoseKey: CustomStringConvertible {
     public class func fromDictionary(_ received: [AnyHashable: Any]) throws -> CoseKey {
         // Attempt to initialize a COSE key from the dictionary
         let kpKty = KpKty()
+        let kpKtyToUse = received[kpKty] ?? received[kpKty.identifier] ?? received[kpKty.fullname]
+        
+        guard kpKtyToUse != nil else {
+            throw CoseError.invalidKeyType("Failed to determine key type")
+        }
         
         do {
-            let keyTypeClass = try fromId(for: received[kpKty] as Any)
+            let keyTypeClass = try fromId(for: kpKtyToUse!)
             return try keyTypeClass.fromDictionary(received)
         } catch {
             throw CoseError.invalidKeyType("Failed to determine key type. \(error.localizedDescription)")
@@ -458,6 +473,13 @@ public class CoseKey: CustomStringConvertible {
 }
 
 public class ReservedKey: CoseKey {
+    
+    /// Initializes a COSE Key object of type ReservedKey.
+    /// - Parameter keyDict: The dictionary containing COSE Key parameters and their values.
+    public override init(keyDict: [AnyHashable: Any]) {
+        super.init(keyDict: keyDict)
+    }
+    
     /// Returns an initialized COSE Key object of type ReservedKey.
     /// - Parameter coseKey: Dict containing COSE Key parameters and their values.
     /// - Returns: An initialized ReservedKey key
