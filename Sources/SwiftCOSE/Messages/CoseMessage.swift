@@ -178,17 +178,15 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     /// - Returns: The decoded COSE message.
     public class func decode<T: CoseMessage>(_ type: T.Type, from received: Data) throws -> T {
         let cborMsg = try CBORSerialization.cbor(from: received)
-        let cborTag = cborMsg.tag
-        let cborObj = cborMsg.value
         
-        if cborTag == nil {
-            throw CoseError.attributeError("Message is not tagged.")
-        }
-        if cborObj == nil {
-            throw CoseError.valueError("Decode accepts only bytes as input.")
+        let cborObj: CBOR
+        if case let .tagged(_, cborData) = cborMsg {
+            cborObj = cborData
+        } else {
+            throw CoseError.invalidMessage("Message is not tagged.")
         }
         
-        if let messageType = cborObj?.arrayValue {
+        if let messageType = cborObj.arrayValue {
             do {
                 let decoded = try T.fromCoseObject(
                     coseObj: messageType
