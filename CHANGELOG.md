@@ -1,3 +1,9 @@
+## 0.1.4 (2025-03-08)
+
+### Fix
+
+- handle custom headers in decoding
+
 ## 0.1.3 (2025-03-08)
 
 ### Fix
