@@ -88,4 +88,18 @@ struct CoseMessageTests {
         
         #expect(coseMessage.key === symmetricKey, "Key should be correctly assigned.")
     }
+    
+    @Test func testDecode() async throws {
+        let signedMessage =
+            "845869a3012704582060545b786d3a6f903158e35aae9b86548a99bc47d4b0a6f503ab5e78c1a9bbfc6761646472657373583900ddba3ad76313825f4f646f5aa6d323706653bda40ec1ae55582986a463e661768b92deba45b5ada4ab9e7ffd17ed3051b2e03500e0542e9aa166686173686564f452507963617264616e6f20697320636f6f6c2e58403b09cbae8d272ff94befd28cc04b152aea3c1633caffb4924a8a8c45be3ba6332a76d9f2aba833df53803286d32a5ee700990b79a0e86fab3cccdbfd37ce250f"
+        let messageData = Data(hex: "D2" + signedMessage)
+        
+        
+        let decodedMessage = try CoseMessage.decode(
+            Sign1Message.self,
+            from: messageData
+        )
+        
+        #expect(decodedMessage != nil, "Decoded message should not be nil.")
+    }
 }

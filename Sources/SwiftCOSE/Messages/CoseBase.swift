@@ -217,13 +217,14 @@ public class CoseBase {
         var decodedHdr: [CoseHeaderAttribute: Any] = [:]
         
         for (key, value) in hdr {
-            guard let attr = try? CoseHeaderAttribute.fromId(for: key) else {
-                throw CoseError.invalidHeader("Invalid header attribute")
-            }
-            
-            if let valueParser = attr.valueParser {
-                decodedHdr[attr] = try valueParser(value)
+            if let attr = try? CoseHeaderAttribute.fromId(for: key) {
+                if let valueParser = attr.valueParser {
+                    decodedHdr[attr] = try valueParser(value)
+                } else {
+                    decodedHdr[attr] = value
+                }
             } else {
+                let attr = CoseHeaderAttribute(customIdentifier: -1, fullname: key as! String)
                 decodedHdr[attr] = value
             }
         }
