@@ -228,7 +228,7 @@ public class CoseAlgorithm: CoseAttribute {
             case .directHKDFAES256: return DirectHKDFAES256()
             case .directHKDFSHA256: return DirectHKDFSHA256()
             case .direcHKDFSHA512: return DirecHKDFSHA512()
-            case .edDSA: return EdDSA()
+            case .edDSA: return EdDSAAlgorithm()
             case .es256: return Es256()
             case .es384: return Es384()
             case .es512: return Es512()

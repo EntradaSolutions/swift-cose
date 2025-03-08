@@ -3,7 +3,7 @@ import CryptoKit
 import SwiftCurve448
 
 /// EdDSA
-public class EdDSA: CoseAlgorithm {
+public class EdDSAAlgorithm: CoseAlgorithm {
     public init() {
         super.init(identifier: .edDSA, fullname: "EDDSA")
     }

@@ -11,7 +11,7 @@ struct CoseKeyTests {
     func testCoseKeyInitialization() async throws {
         let keyDict: [AnyHashable: Any] = [
             KpKty(): KtyOKP(),
-            KpAlg(): EdDSA(),
+            KpAlg(): EdDSAAlgorithm(),
             KpKid(): Data([0x01, 0x02]),
             KpBaseIV(): Data([0x03, 0x04]),
             KpKeyOps(): [EncryptOp(), DecryptOp()]
@@ -20,7 +20,7 @@ struct CoseKeyTests {
         let coseKey = CoseKey(keyDict: keyDict)
         
         #expect(coseKey.kty == KtyOKP())
-        #expect(coseKey.alg == EdDSA())
+        #expect(coseKey.alg == EdDSAAlgorithm())
         #expect(coseKey.kid == Data([0x01, 0x02]))
         #expect(coseKey.baseIV == Data([0x03, 0x04]))
         #expect(coseKey.keyOps == [])
@@ -78,7 +78,7 @@ struct CoseKeyTests {
     func testCoseKeyEncode() async throws {
         let keyDict: [AnyHashable: Any] = [
             KpKty(): KtyOKP(),
-            KpAlg(): EdDSA(),
+            KpAlg(): EdDSAAlgorithm(),
             KpKid(): Data([0x01, 0x02]),
             KpBaseIV(): Data([0x03, 0x04])
         ]

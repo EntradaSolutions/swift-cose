@@ -61,7 +61,7 @@ struct SignCommonTests {
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.x25519)
         let okpKey = try OKPKey.generateKey(curve: curve)
         
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): EdDSA()]
+        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): EdDSAAlgorithm()]
         let signMessage = SignCommon(
             phdr: phdr,
             uhdr: [:],
@@ -71,7 +71,7 @@ struct SignCommonTests {
         )
         
         #expect(throws: Never.self) {
-            try signMessage.keyVerification(alg: EdDSA(), ops: VerifyOp())
+            try signMessage.keyVerification(alg: EdDSAAlgorithm(), ops: VerifyOp())
         }
     }
     

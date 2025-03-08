@@ -21,7 +21,7 @@ struct EdDSATests {
         // Perform signing
         let eddsa = try CoseAlgorithm.fromId(
             for: CoseAlgorithmIdentifier.edDSA
-        ) as! EdDSA
+        ) as! EdDSAAlgorithm
         let signature = try eddsa.sign(key: keyPair, data: data)
         
         #expect(
