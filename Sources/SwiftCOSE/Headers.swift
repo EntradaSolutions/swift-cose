@@ -69,7 +69,7 @@ public enum CoseHeaderIdentifier: Int, CaseIterable, Sendable {
     }
 }
 
-public class CoseHeaderAttribute: CoseAttribute {
+open class CoseHeaderAttribute: CoseAttribute {
     public init(
         identifier: CoseHeaderIdentifier,
         fullname: String,

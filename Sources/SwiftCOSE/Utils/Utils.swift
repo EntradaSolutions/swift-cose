@@ -38,7 +38,7 @@ func toBstr(_ dec: BigUInteger) -> Data {
 }
 
 /// Base class for COSE attributes
-public class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomDebugStringConvertible {
+open class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomDebugStringConvertible {
     
 //    enum CodingKeys: String, CodingKey {
 //        case identifier
