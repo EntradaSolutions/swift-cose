@@ -1,3 +1,9 @@
+## 0.1.6 (2025-03-08)
+
+### Fix
+
+- add hanlder for EdDSAAlgorithm and rename
+
 ## 0.1.5 (2025-03-08)
 
 ### Fix
