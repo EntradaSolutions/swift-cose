@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 public class CoseSignature: SignCommon {
     
@@ -17,8 +18,8 @@ public class CoseSignature: SignCommon {
     private var _payload: Data?
     
     // MARK: - Initialization
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseKey? = nil,

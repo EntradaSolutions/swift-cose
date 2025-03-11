@@ -38,13 +38,13 @@ struct CurveTypeTests {
     @Test("Test All Cose Curves", arguments: CoseCurveIdentifier.allCases)
     func testCoseCurve(_ curveId: CoseCurveIdentifier) async throws {
         let curve1 = try CoseCurve.fromId(for: curveId)
-        let curve2 = try CoseCurve.fromId(for: curve1.fullname)
+        let curve2 = try CoseCurve.fromId(for: curve1.fullname!)
         let curve3 = try CoseCurve.fromId(for: curveId.rawValue)
         
         #expect(curve1 == curve2)
         #expect(curve2 == curve3)
         #expect(curve1.identifier == curveId.rawValue)
-        #expect(curve1.identifier == CoseCurveIdentifier.fromFullName(curve1.fullname)?.rawValue)
+        #expect(curve1.identifier == CoseCurveIdentifier.fromFullName(curve1.fullname!)?.rawValue)
     }
     
     

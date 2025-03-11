@@ -96,7 +96,7 @@ struct ContextTests {
         
         #expect(decodedArray!.count == 4, "Encoded CoseKDFContext should have 4 elements.")
         #expect(
-            decodedArray![0] == CBOR(algorithm.identifier),
+            decodedArray![0] == CBOR(algorithm.identifier!),
             "First element should match algorithm."
         )
         #expect(

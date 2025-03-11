@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct Mac0MessageTests {
@@ -8,12 +9,12 @@ struct Mac0MessageTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x05, 0x06, 0x07, 0x08])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -54,17 +55,17 @@ struct Mac0MessageTests {
         let payload = Data("Mac0 Payload".utf8)
         let authTag = Data([0x01, 0x02, 0x03])
         
-        let phdr: [CoseHeaderAttribute: Any] = [
-            Algorithm(): A256GCM().identifier,
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
+            Algorithm(): A256GCM().identifier!,
             IV(): Data([0x05, 0x06, 0x07, 0x08])
         ]
-        let protectedHdrMap = CBOR.map((phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
+        let protectedHdrMap = CBOR.map(phdr.mapKeysToCbor)
         let encoded = try CBORSerialization.data(from: protectedHdrMap)
         
         let coseArray: CBOR.Array = [
             CBOR.byteString(encoded),
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier), // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!), // Algorithm
                 CBOR.simple(5): CBOR(Data([0x05, 0x06, 0x07, 0x08])) // IV
             ]),
             CBOR.byteString(payload),
@@ -84,12 +85,12 @@ struct Mac0MessageTests {
     // MARK: - Encode Tests
     
     @Test func testEncode() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): AESMAC12864(),
             IV(): Data([0x09, 0x0A, 0x0B, 0x0C])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -106,14 +107,13 @@ struct Mac0MessageTests {
         let encoded = try mac0Message.encode()
         let decoded = try CBORSerialization.cbor(from: encoded)
         
-        print(decoded)
-        
         #expect(decoded != nil, "Encoded CBOR should not be nil.")
         
         if case let .tagged(tag, value) = decoded {
-            print("Tag value: \(tag.rawValue)")  // Outputs: 17
             #expect(tag.rawValue == mac0Message.cborTag, "CBOR tag should match Mac0 tag.")
             #expect(value.arrayValue!.count == 4, "Encoded CBOR should contain four elements.")
+        } else {
+            Issue.record("Failed to decode CBOR value.")
         }
     }
     
@@ -122,7 +122,7 @@ struct Mac0MessageTests {
     @Test func testInvalidCoseObject() async throws {
         let invalidCoseArray: CBOR.Array = [
             CBOR.map([
-                CBOR.simple(1): CBOR(A128GCM().identifier)  // Algorithm
+                CBOR.simple(1): CBOR(A128GCM().identifier!)  // Algorithm
             ])
         ]
         

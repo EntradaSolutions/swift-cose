@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct EncMessageTests {
@@ -8,12 +9,12 @@ struct EncMessageTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -53,12 +54,12 @@ struct EncMessageTests {
     // MARK: - Encode Tests
     
     @Test func testEncode() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x11, 0x12, 0x13, 0x14])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -91,12 +92,12 @@ struct EncMessageTests {
     }
     
     @Test func testEncodeWithoutRecipients() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x11, 0x12, 0x13, 0x14])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -119,12 +120,12 @@ struct EncMessageTests {
     // MARK: - Decryption Tests
     
     @Test func testDecryption() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x11, 0x12, 0x13, 0x14])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         

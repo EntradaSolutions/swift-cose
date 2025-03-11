@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct Sign1MessageTests {
@@ -8,12 +9,12 @@ struct Sign1MessageTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -54,14 +55,14 @@ struct Sign1MessageTests {
         let signature = Data([0x30, 0x45, 0x02, 0x21])
         
         let phdr: [CoseHeaderAttribute: Any] = [
-            Algorithm(): Es256().identifier
+            Algorithm(): Es256().identifier!
         ]
         let protectedHdrMap = CBOR.map((phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
         let encoded = try CBORSerialization.data(from: protectedHdrMap)
         
         let coseArray: CBOR.Array = [
             CBOR.byteString(encoded),
-            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier)]),
+            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier!)]),
             CBOR.byteString(payload),
             CBOR.byteString(signature)
         ]
@@ -77,12 +78,12 @@ struct Sign1MessageTests {
     // MARK: - Encode Tests
     
     @Test func testEncode() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -103,9 +104,10 @@ struct Sign1MessageTests {
         #expect(decoded != nil, "Encoded CBOR should not be nil.")
         
         if case let .tagged(tag, value) = decoded {
-            print("Tag value: \(tag.rawValue)")
             #expect(tag.rawValue == sign1Message.cborTag, "CBOR tag should match Sign1Message tag.")
             #expect(value.arrayValue!.count == 4, "Encoded CBOR should contain four elements.")
+        } else {
+            Issue.record("Decoded CBOR should be tagged.")
         }
     }
     

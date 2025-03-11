@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 /// Abstract class representing a COSE Sign Message.
 public class CoseSignMessage: CoseMessage {
@@ -27,8 +28,8 @@ public class CoseSignMessage: CoseMessage {
     
     // MARK: - Initialization
     public init(
-        phdr: [CoseHeaderAttribute: Any]? = nil,
-        uhdr: [CoseHeaderAttribute: Any]? = nil,
+        phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+        uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
         payload: Data? = nil,
         signers: [CoseSignature] = []
     ) {

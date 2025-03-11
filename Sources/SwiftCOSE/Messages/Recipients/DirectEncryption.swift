@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 public class DirectEncryption: CoseRecipient {
     
@@ -11,8 +12,8 @@ public class DirectEncryption: CoseRecipient {
     private var _context: String = ""
     
     // MARK: - Initialization
-    public required init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                         uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public required init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                         uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
                          key: CoseKey? = nil,
@@ -58,11 +59,10 @@ public class DirectEncryption: CoseRecipient {
         }
         
         let algorithm: CoseAlgorithm
-        let algId: CoseAlgorithmIdentifier
+//        let algId: CoseAlgorithmIdentifier
         
         algorithm = try (msg.getAttr(Algorithm()) as? CoseAlgorithm)!
-//        algorithm = try CoseAlgorithm.fromId(for: alg!)
-        algId = CoseAlgorithmIdentifier(rawValue: algorithm.identifier)!
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(algorithm)
         
         if algId == .direct && !directEncryptionMsg.phdr.isEmpty {
             throw CoseError.malformedMessage(
@@ -78,7 +78,7 @@ public class DirectEncryption: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Message must carry an algorithm parameter when using DIRECT_ENCRYPTION mode.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         if algId == .direct && !phdr.isEmpty {
             throw CoseError.malformedMessage("Protected header must be empty.")

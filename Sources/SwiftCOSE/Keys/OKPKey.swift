@@ -151,7 +151,7 @@ public class OKPKey: CoseKey {
         let (_, x, _, d) = try deriveNumbers(from: extKey)
         
         var coseKey: [AnyHashable : Any] = [
-            OKPKpCurve(): curve.identifier,
+            OKPKpCurve(): curve.identifier ?? curve.fullname ?? curve as Any,
             OKPKpX(): x,
         ]
         

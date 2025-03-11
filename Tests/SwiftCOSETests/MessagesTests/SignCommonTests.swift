@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct SignCommonTests {
@@ -8,12 +9,12 @@ struct SignCommonTests {
     // MARK: - Initialization Tests
     
     @Test func testSignCommonInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/sign-cbor"
         ]
         
@@ -43,7 +44,7 @@ struct SignCommonTests {
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.p256)
         let ec2Key = try EC2Key.generateKey(curve: curve)
         
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Es256()]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Es256()]
         let signMessage = SignCommon(
             phdr: phdr,
             uhdr: [:],
@@ -61,7 +62,7 @@ struct SignCommonTests {
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.x25519)
         let okpKey = try OKPKey.generateKey(curve: curve)
         
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): EdDSAAlgorithm()]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): EdDSAAlgorithm()]
         let signMessage = SignCommon(
             phdr: phdr,
             uhdr: [:],
@@ -78,7 +79,7 @@ struct SignCommonTests {
     @Test func testKeyVerificationWithRSAKey() async throws {
         let rsaKey = try RSAKey.generateKey(keyBits: 1024)
         
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Ps256()]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Ps256()]
         let signMessage = SignCommon(
             phdr: phdr,
             uhdr: [:],
@@ -93,7 +94,7 @@ struct SignCommonTests {
     }
     
     @Test func testKeyVerificationWithNilKey() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Es256()]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Es256()]
         let signMessage = SignCommon(
             phdr: phdr,
             uhdr: [:],

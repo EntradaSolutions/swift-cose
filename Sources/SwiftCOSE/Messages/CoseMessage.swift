@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 public enum CoseMessageIdentifier: Int, CaseIterable, Sendable {
     case encrypt0 = 16
@@ -98,8 +99,8 @@ public class CoseMessage: CoseBase, CustomStringConvertible {
     ///   - payload: The payload of the COSE message (optional).
     ///   - externalAAD: External AAD for the COSE message (default: empty data).
     ///   - key: Key associated with the COSE message (optional).
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                 payload: Data? = nil,
                 externalAAD: Data = Data(),
                 key: CoseKey? = nil) {

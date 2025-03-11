@@ -4,7 +4,6 @@ import UncommonCrypto
 
 /// Base class for ECDSA algorithms
 public class EcdsaAlgorithm: CoseAlgorithm {
-    
     /// Signs the data
     /// - Parameters:
     ///   - key: The EC2 key to use for signing
@@ -12,7 +11,7 @@ public class EcdsaAlgorithm: CoseAlgorithm {
     /// - Returns: The signature
     public func sign(key: EC2Key, data: Data) throws -> Data {
         let signature: Data
-        switch CoseAlgorithmIdentifier(rawValue: identifier) {
+        switch CoseAlgorithmIdentifier(rawValue: identifier!) {
             case .es256:
                 guard let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: key.d!) else {
                     throw CoseError.invalidKey("Invalid private key")
@@ -49,7 +48,7 @@ public class EcdsaAlgorithm: CoseAlgorithm {
         x963Representation.append(key.y!)
         
         var isValid: Bool = false
-        let algId = CoseAlgorithmIdentifier(rawValue: identifier)
+        let algId = CoseAlgorithmIdentifier(rawValue: identifier!)
         switch algId {
             case .es256:
                 guard let publicKey = try? P256.Signing.PublicKey(x963Representation: x963Representation) else {

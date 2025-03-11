@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 /// COSE_Mac0 message type
 public class Mac0Message: MacCommon {
@@ -8,11 +9,13 @@ public class Mac0Message: MacCommon {
     public override var cborTag: Int { 17 }
 
     // MARK: - Initialization
-    public override init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
-                payload: Data = Data(),
-                externalAAD: Data = Data(),
-                key: CoseSymmetricKey? = nil) {
+    public override init(
+        phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+        uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+        payload: Data = Data(),
+        externalAAD: Data = Data(),
+        key: CoseSymmetricKey? = nil
+    ) {
         super.init(
             phdr: phdr,
             uhdr: uhdr,

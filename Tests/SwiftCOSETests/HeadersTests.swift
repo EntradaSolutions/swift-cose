@@ -85,13 +85,13 @@ struct HeadersTests {
     @Test("Test All Cose Headers", arguments: CoseHeaderIdentifier.allCases)
     func testCoseAlgorithm(_ hdrId: CoseHeaderIdentifier) async throws {
         let hdr1 = try CoseHeaderAttribute.fromId(for: hdrId)
-        let hdr2 = try CoseHeaderAttribute.fromId(for: hdr1.fullname)
+        let hdr2 = try CoseHeaderAttribute.fromId(for: hdr1.fullname!)
         let hdr3 = try CoseHeaderAttribute.fromId(for: hdrId.rawValue)
         
         #expect(hdr1 == hdr2)
         #expect(hdr2 == hdr3)
         #expect(hdr1.identifier == hdrId.rawValue)
-        #expect(hdr1.identifier == CoseHeaderIdentifier.fromFullName(hdr1.fullname)?.rawValue)
+        #expect(hdr1.identifier == CoseHeaderIdentifier.fromFullName(hdr1.fullname!)?.rawValue)
     }
     
     // MARK: - Utility Function Tests

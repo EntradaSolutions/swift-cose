@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct CoseSignatureTests {
@@ -8,12 +9,12 @@ struct CoseSignatureTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x05, 0x06, 0x07, 0x08])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -52,15 +53,15 @@ struct CoseSignatureTests {
     @Test func testFromCoseObject() async throws {
         let payload = Data("Signature Object Payload".utf8)
         
-        let phdr: [CoseHeaderAttribute: Any] = [
-            Algorithm(): Es256().identifier
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
+            Algorithm(): Es256().identifier!
         ]
-        let protectedHdrMap = CBOR.map((phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
+        let protectedHdrMap = CBOR.map(phdr.mapKeysToCbor)
         let encoded = try CBORSerialization.data(from: protectedHdrMap)
         
         let coseArray: CBOR.Array = [
             CBOR.byteString(encoded),
-            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier)]),
+            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier!)]),
             CBOR.byteString(payload)
         ]
         
@@ -73,12 +74,12 @@ struct CoseSignatureTests {
     // MARK: - Encode Tests
     
     @Test func testEncode() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x09, 0x0A, 0x0B, 0x0C])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -104,12 +105,12 @@ struct CoseSignatureTests {
     // MARK: - Signature Structure Tests
     
     @Test func testSignatureStructure() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x09, 0x0A, 0x0B, 0x0C])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         

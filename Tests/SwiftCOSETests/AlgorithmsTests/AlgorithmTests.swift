@@ -156,12 +156,12 @@ struct AlgorithmsTests {
     @Test("Test All Cose Algorithms", arguments: CoseAlgorithmIdentifier.allCases)
     func testCoseAlgorithm(_ algId: CoseAlgorithmIdentifier) async throws {
         let alg1 = try CoseAlgorithm.fromId(for: algId)
-        let alg2 = try CoseAlgorithm.fromId(for: alg1.fullname)
+        let alg2 = try CoseAlgorithm.fromId(for: alg1.fullname!)
         let alg3 = try CoseAlgorithm.fromId(for: algId.rawValue)
         
         #expect(alg1 == alg2)
         #expect(alg2 == alg3)
         #expect(alg1.identifier == algId.rawValue)
-        #expect(alg1.identifier == CoseAlgorithmIdentifier.fromFullName(alg1.fullname)?.rawValue)
+        #expect(alg1.identifier == CoseAlgorithmIdentifier.fromFullName(alg1.fullname!)?.rawValue)
     }
 }

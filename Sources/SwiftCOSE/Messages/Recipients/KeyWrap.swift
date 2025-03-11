@@ -37,10 +37,11 @@ public class KeyWrap: CoseRecipient {
         guard let alg = try keyWrapMsg.getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         let needsZeroPHdr: [CoseAlgorithmIdentifier] = [.aesKW_128, .aesKW_192, .aesKW_256]
-        if needsZeroPHdr.contains(algId!) && !keyWrapMsg.phdr.isEmpty {
+        if needsZeroPHdr.contains(algId) && !keyWrapMsg.phdr.isEmpty {
             throw CoseError.malformedMessage("Recipient class \(type(of: self)) must carry the encrypted CEK in its payload.")
         }
         
@@ -146,7 +147,7 @@ public class KeyWrap: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         if phdr.isEmpty {
             throw CoseError.invalidRecipientConfiguration("The algorithm parameter should at least be included in the unprotected header.")
@@ -185,7 +186,7 @@ public class KeyWrap: CoseRecipient {
             default:
                 throw CoseError
                     .invalidAlgorithm(
-                        "Algorithm \(alg.fullname) is not supported for KeyWrap."
+                        "Algorithm \(String(describing: alg.fullname)) is not supported for KeyWrap."
                     )
         }
 
@@ -195,7 +196,8 @@ public class KeyWrap: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         let keyOps = [DecryptOp(), UnwrapOp()]
         
@@ -233,7 +235,7 @@ public class KeyWrap: CoseRecipient {
             default:
                 throw CoseError
                     .invalidAlgorithm(
-                        "Algorithm \(alg.fullname) is not supported for KeyWrap."
+                        "Algorithm \(String(describing: alg.fullname)) is not supported for KeyWrap."
                     )
         }
     }

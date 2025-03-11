@@ -1,6 +1,7 @@
 import Foundation
 import PotentCodables
 import PotentCBOR
+import OrderedCollections
 
 
 /// Base class for all COSE Recipient types
@@ -60,8 +61,8 @@ public class CoseRecipient: CoseMessage {
     ///   - externalAAD: The external additional authenticated data.
     ///   - key: The key for encryption/decryption.
     ///   - recipients: The list of `CoseRecipient` objects.
-    public required init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                         uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public required init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                         uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
                          key: CoseKey? = nil,
@@ -72,7 +73,14 @@ public class CoseRecipient: CoseMessage {
     
     // MARK: - Methods
     public class func fromAlgorithm(algorithm: CoseAlgorithm) -> CoseRecipient.Type? {
-        let algorithmIdentifier = CoseAlgorithmIdentifier.fromFullName(algorithm.fullname)
+        let algorithmIdentifier: CoseAlgorithmIdentifier
+        if let fullname = algorithm.fullname {
+            algorithmIdentifier = CoseAlgorithmIdentifier.fromFullName(fullname)!
+        } else if let identifier = algorithm.identifier{
+            algorithmIdentifier = CoseAlgorithmIdentifier(rawValue: identifier)!
+        } else {
+            return nil
+        }
         
         switch algorithmIdentifier {
             case .direct, .directHKDFAES256, .directHKDFSHA256:
@@ -98,11 +106,19 @@ public class CoseRecipient: CoseMessage {
         // Check if the first item in the recipient array is not empty
         let pAlg: CoseAlgorithm?
         let protectedHeader = recipient[0]
-        var pHdr: [CoseHeaderAttribute: Any] = [:]
+        var pHdr: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
         
         if let pBytes = protectedHeader.bytesStringValue, !pBytes.isEmpty {
             let decoded = try CBORSerialization.cbor(from: pBytes)
-            pHdr = try parseHeader(hdr: decoded.unwrapped as! [AnyHashable: Any])
+            
+            if case let CBOR.map(decoded) = decoded {
+                let ordered = OrderedDictionary(uniqueKeysWithValues: decoded.map { key, value in
+                    (key.unwrapped as! AnyHashable, value.unwrapped!)
+                })
+                pHdr = try parseHeader(hdr: ordered)
+            } else {
+                throw CoseError.valueError("Protected header must be a CBOR map")
+            }
             
             if let alg = pHdr[Algorithm()] {
                 pAlg = try CoseAlgorithm.fromId(for: alg)
@@ -117,10 +133,15 @@ public class CoseRecipient: CoseMessage {
         // Parse the unprotected algorithm
         let uAlg: CoseAlgorithm?
         let unprotectedHeader = recipient[1]
-        var unprotectedAttributes: [CoseHeaderAttribute: Any] = [:]
+        var unprotectedAttributes: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
         
-        if let uhdrMap = unprotectedHeader.unwrapped as? [AnyHashable: Any] {
-            unprotectedAttributes = try parseHeader(hdr: uhdrMap)
+        if case let CBOR.map(decoded) = unprotectedHeader {
+            let ordered = OrderedDictionary(uniqueKeysWithValues: decoded.map { key, value in
+                (key.unwrapped as! AnyHashable, value.unwrapped!)
+            })
+            unprotectedAttributes = try parseHeader(hdr: ordered)
+        } else {
+            throw CoseError.valueError("Protected header must be a CBOR map")
         }
         
         // Extract the algorithm from unprotected attributes

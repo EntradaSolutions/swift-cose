@@ -123,6 +123,7 @@ struct CoseErrorTests {
         switch error {
         case .attributeError(let message),
              .genericError(let message),
+             .invalidAttribute(let message),
              .invalidCurve(let message),
              .invalidKeyOps(let message),
              .invalidKeyType(let message),

@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct KeyAgreementWithKeyWrapTests {
@@ -8,8 +9,8 @@ struct KeyAgreementWithKeyWrapTests {
     // MARK: - Test Initialization
     
     @Test func testKeyAgreementWithKeyWrapInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): EcdhEsHKDF256()]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): EcdhEsHKDF256()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         let payload = Data("encryptedCEK".utf8)
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
 
@@ -32,7 +33,7 @@ struct KeyAgreementWithKeyWrapTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -129,10 +130,10 @@ struct KeyAgreementWithKeyWrapTests {
     @Test func testEncodingKeyAgreementWithKeyWrap() async throws {
         let payload = try CoseSymmetricKey.generateKey(keyLength: 32).k
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.p256)
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): EcdhEsA128KW()
         ]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         
         let recipient = KeyAgreementWithKeyWrap(
             phdr: phdr,

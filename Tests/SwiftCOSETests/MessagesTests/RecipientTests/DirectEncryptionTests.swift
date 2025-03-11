@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct DirectEncryptionTests {
@@ -8,8 +9,8 @@ struct DirectEncryptionTests {
     // MARK: - Test Initialization
     
     @Test func testDirectEncryptionInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Direct()]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Direct()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         let payload = Data()
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
         
@@ -33,7 +34,7 @@ struct DirectEncryptionTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -62,8 +63,8 @@ struct DirectEncryptionTests {
     // MARK: - Test Protected Header Not Empty (Error Case)
     
     @Test func testNonEmptyProtectedHeader() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Direct()]
-        let uhdr: [CoseHeaderAttribute: Any] = [:]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Direct()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
         let payload = Data()
         
         let directEncryption = DirectEncryption(
@@ -80,7 +81,7 @@ struct DirectEncryptionTests {
     // MARK: - Test Valid Encoding
     
     @Test func testValidEncoding() async throws {
-        let uhdr: [CoseHeaderAttribute: Any] = [Algorithm(): Direct()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Direct()]
         let payload = Data()
         
         let directEncryption = DirectEncryption(
@@ -108,7 +109,7 @@ struct DirectEncryptionTests {
     
     @Test func testComputeCEKWithKey() async throws {
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
-        let uhdr: [CoseHeaderAttribute: Any] = [Algorithm(): A128KW()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): A128KW()]
         let directEncryption = DirectEncryption(uhdr: uhdr, key: key)
         let algorithm = A128KW()
         
@@ -120,7 +121,7 @@ struct DirectEncryptionTests {
     
     @Test func testComputeCEKWithKeyDirectAlg() async throws {
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
-        let uhdr: [CoseHeaderAttribute: Any] = [Algorithm(): Direct()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Direct()]
         let directEncryption = DirectEncryption(uhdr: uhdr, key: key)
         let algorithm = A128KW()
         

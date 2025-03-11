@@ -19,9 +19,6 @@ public func derivePublicKeyFromNumbers<T>(curve: CurveType, x: Data, y: Data) th
             case .SECP384R1:
                 return try P384.KeyAgreement.PublicKey(x963Representation: x963Representation) as! T
             case .SECP521R1:
-                print("x length: \(x.count), y length: \(y.count)")
-                let keyHex = x963Representation.map { String(format: "%02x", $0) }.joined()
-                print("x963Representation: \(keyHex)")
                 return try P521.KeyAgreement.PublicKey(x963Representation: x963Representation) as! T
             default:
                 throw CoseError.invalidAlgorithm("Unsupported curve")

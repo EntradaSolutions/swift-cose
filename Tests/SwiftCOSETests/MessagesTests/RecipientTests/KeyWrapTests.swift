@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct KeyWrapTests {
@@ -8,8 +9,8 @@ struct KeyWrapTests {
     // MARK: - Test Initialization
     
     @Test func testKeyWrapInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): A128KW()]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): A128KW()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         let payload = Data("wrappedCEK".utf8)
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
 
@@ -32,7 +33,7 @@ struct KeyWrapTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(A128KW().identifier) // Algorithm
+                CBOR.simple(1): CBOR(A128KW().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -65,10 +66,10 @@ struct KeyWrapTests {
 //    @Test func testComputeCEKForDecryption() async throws {
 //        let key = try CoseSymmetricKey.generateKey(keyLength: 32)
 //        let payload = key.k
-//        let phdr: [CoseHeaderAttribute: Any] = [
+//        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
 //            Algorithm(): A256KW()
 //        ]
-//        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+//        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
 //        
 //        let recipient = KeyWrap(
 //            phdr: phdr,
@@ -91,10 +92,10 @@ struct KeyWrapTests {
     @Test func testEncodingKeyWrap() async throws {
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
         let payload = key.k
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A256KW()
         ]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         
         let recipient = KeyWrap(
             phdr: phdr,

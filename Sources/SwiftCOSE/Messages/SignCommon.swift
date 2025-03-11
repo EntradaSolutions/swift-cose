@@ -51,23 +51,26 @@ public class SignCommon: CoseMessage {
         }
 
         try keyVerification(alg: alg, ops: VerifyOp())
+        let data = try createSignatureStructure(
+            detachedPayload: detachedPayload
+        )
         
         if let alg = alg as? EcdsaAlgorithm {
             return try alg.verify(
                 key: self.key as! EC2Key,
-                data: createSignatureStructure(detachedPayload: detachedPayload),
+                data: data,
                 signature: self.signature!
             )
         } else if let alg = alg as? EdDSAAlgorithm {
             return try alg.verify(
                 key: self.key as! OKPKey,
-                data: createSignatureStructure(detachedPayload: detachedPayload),
+                data: data,
                 signature: self.signature!
             )
-        }else if let alg = alg as? RsaAlgorithm {
+        } else if let alg = alg as? RsaAlgorithm {
             return try alg.verify(
                 key: self.key as! RSAKey,
-                data: createSignatureStructure(detachedPayload: detachedPayload),
+                data: data,
                 signature: self.signature!
             )
         } else {

@@ -9,17 +9,17 @@ public class CoseBase {
     public var algTstrEncoding: Bool = false
 
     /// The protected header, stored as a dictionary of attributes.
-    private var _phdr: [CoseHeaderAttribute: Any] = [:]
+    private var _phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
     
     /// The encoded version of the protected header.
     private var _phdrEncoded: Data? = nil
     
     /// The unprotected header, stored as a dictionary of attributes.
-    private var _uhdr: [CoseHeaderAttribute: Any] = [:]
-    private var _localAttrs: [CoseHeaderAttribute: Any] = [:]
+    private var _uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
+    private var _localAttrs: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
     
     // MARK: - Protected Header (phdr)
-    public var phdr: [CoseHeaderAttribute: Any] {
+    public var phdr: OrderedDictionary<CoseHeaderAttribute, Any> {
         get {
             return _phdr
         }
@@ -30,7 +30,7 @@ public class CoseBase {
     }
     
     // MARK: - Unprotected Header (uhdr)
-    public var uhdr: [CoseHeaderAttribute: Any] {
+    public var uhdr: OrderedDictionary<CoseHeaderAttribute, Any> {
         get {
             return _uhdr
         }
@@ -40,7 +40,7 @@ public class CoseBase {
     }
     
     // MARK: - Local Attributes (localAttrs)
-    public var localAttrs: [CoseHeaderAttribute: Any] {
+    public var localAttrs: OrderedDictionary<CoseHeaderAttribute, Any> {
         get {
             return _localAttrs
         }
@@ -67,7 +67,7 @@ public class CoseBase {
 
             do {
                 // Convert `_phdr` to a CBOR.Map by mapping its keys and values
-                let protectedHdrMap = CBOR.map((_phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
+                let protectedHdrMap = CBOR.map(_phdr.mapKeysToCbor)
                 
                 let encoded = try CBORSerialization.data(from: protectedHdrMap)
                 _phdrEncoded = encoded
@@ -83,7 +83,7 @@ public class CoseBase {
     /// Encodes the unprotected header.
     ///
     /// - Returns: The encoded unprotected header as a dictionary.
-    public var uhdrEncoded: [CoseHeaderAttribute: Any] {
+    public var uhdrEncoded:OrderedDictionary<CoseHeaderAttribute, Any> {
         return _uhdr
     }
 
@@ -112,7 +112,7 @@ public class CoseBase {
     /// - Parameters:
     ///   - phdr: The initial protected header (optional).
     ///   - uhdr: The initial unprotected header (optional).
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil, uhdr: [CoseHeaderAttribute: Any]? = nil) {
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil, uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil) {
         if let phdr = phdr {
             self._phdr = phdr
         }
@@ -122,7 +122,7 @@ public class CoseBase {
     }
     
     // MARK: - Initialization
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil, uhdr: [CoseHeaderAttribute: Any]? = nil, payload: Data? = nil, phdrEncoded: Data? = nil, algTstrEncoding: Bool? = false) throws {
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil, uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil, payload: Data? = nil, phdrEncoded: Data? = nil, algTstrEncoding: Bool? = false) throws {
         if phdr != nil && phdrEncoded != nil {
             throw CoseError.valueError("Cannot have both phdr and phdrEncoded")
         }
@@ -132,7 +132,15 @@ public class CoseBase {
                 self.phdr = [:]
             } else {
                 let decoded = try CBORSerialization.cbor(from: phdrEncoded!)
-                self.phdr = try CoseBase.parseHeader(hdr: decoded.unwrapped as! [AnyHashable: Any])
+                
+                if case let CBOR.map(decoded) = decoded {
+                    let ordered = OrderedDictionary(uniqueKeysWithValues: decoded.map { key, value in
+                        (key.unwrapped as! AnyHashable, value.unwrapped!)
+                    })
+                    self.phdr = try CoseBase.parseHeader(hdr: ordered)
+                } else {
+                    throw CoseError.valueError("Protected header must be a CBOR map")
+                }
                 
                 if let algId = self.phdr[Algorithm()] {
                     let coseAlg = try CoseAlgorithm.fromId(for: algId)
@@ -144,7 +152,8 @@ public class CoseBase {
             self.phdr = [:]
         }
 
-        self.uhdr = uhdr ?? [:] as! [CoseHeaderAttribute : Any]
+        self.uhdr = uhdr ?? [:] as! OrderedDictionary<CoseHeaderAttribute, Any>
+        
         if let algId = self.uhdr[Algorithm()] {
             let coseAlg = try CoseAlgorithm.fromId(for: algId)
             self.uhdr[Algorithm()] = coseAlg
@@ -165,11 +174,15 @@ public class CoseBase {
             throw CoseError.valueError("Insufficient elements in coseObj to construct a CoseBase")
         }
         
-        var unprotectedAttributes: [CoseHeaderAttribute: Any] = [:]
+        var unprotectedAttributes: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
         
         let phdrEncoded = coseObj[0]
+        
         let uhdr = coseObj[1]
-        if let uhdrMap = uhdr.unwrapped as? [AnyHashable: Any] {
+        if case let .map(uhdrCBORMap) = uhdr {
+            let uhdrMap = OrderedDictionary(uniqueKeysWithValues: uhdrCBORMap.map { key, value in
+                (key.unwrapped as! AnyHashable, value.unwrapped!)
+            })
             unprotectedAttributes = try parseHeader(hdr: uhdrMap)
         }
 
@@ -213,8 +226,9 @@ public class CoseBase {
     }
 
     // MARK: - Helper Methods
-    public class func parseHeader(hdr: [AnyHashable: Any]) throws -> [CoseHeaderAttribute: Any] {
-        var decodedHdr: [CoseHeaderAttribute: Any] = [:]
+    public class func parseHeader(hdr: OrderedDictionary<AnyHashable, Any>) throws -> OrderedDictionary<CoseHeaderAttribute, Any> {
+//        var decodedHdr: [CoseHeaderAttribute: Any] = [:]
+        var decodedHdr: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
         
         for (key, value) in hdr {
             if let attr = try? CoseHeaderAttribute.fromId(for: key) {
@@ -224,23 +238,31 @@ public class CoseBase {
                     decodedHdr[attr] = value
                 }
             } else {
-                let attr = CoseHeaderAttribute(customIdentifier: -1, fullname: key as! String)
+                let attr = CoseHeaderAttribute(
+                    customIdentifier: nil,
+                    fullname: key as? String
+                )
                 decodedHdr[attr] = value
             }
         }
-        
         return decodedHdr
     }
     
-    public func hdrRepr() -> (phdr: [AnyHashable: Any], uhdr: [AnyHashable: Any]) {
-        var phdr: [String: Any] = _phdr.reduce(into: [:]) { result, element in
-            let keyName: String = element.key.fullname            
-            result[keyName] = "\(type(of: element.value))"
+    public func hdrRepr() -> (phdr: OrderedDictionary<AnyHashable, Any>, uhdr: OrderedDictionary<AnyHashable, Any>) {
+        var phdr: OrderedDictionary<AnyHashable, Any> = _phdr.reduce(into: [:]) { result, element in
+            if let keyName = element.key.fullname {
+                result[keyName] = "\(type(of: element.value))"
+            } else if let keyName = element.key.identifier {
+                result[keyName] = "\(type(of: element.value))"
+            }
         }
 
-        var uhdr: [String: Any] = _uhdr.reduce(into: [:]) { result, element in
-            let keyName: String = element.key.fullname
-            result[keyName] = "\(type(of: element.value))"
+        var uhdr: OrderedDictionary<AnyHashable, Any> = _uhdr.reduce(into: [:]) { result, element in
+            if let keyName = element.key.fullname {
+                result[keyName] = "\(type(of: element.value))"
+            } else if let keyName = element.key.identifier {
+                result[keyName] = "\(type(of: element.value))"
+            }
         }
 
         if let iv = phdr["IV"] as? String, !iv.isEmpty {

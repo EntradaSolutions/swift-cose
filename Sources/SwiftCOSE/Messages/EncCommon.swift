@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 // MARK: - EncCommon
 
@@ -23,8 +24,8 @@ public class EncCommon: CoseMessage {
     }
 
     // MARK: - Initialization
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil) {

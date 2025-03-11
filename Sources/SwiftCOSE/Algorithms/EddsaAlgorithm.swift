@@ -9,7 +9,7 @@ public class EdDSAAlgorithm: CoseAlgorithm {
     }
     
     public func sign(key: OKPKey, data: Data) throws -> Data {
-        let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier)
+        let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier!)
         switch curveId {
             case .ed25519:
                 guard let privateKey = try? Curve25519.Signing.PrivateKey(rawRepresentation: key.d!) else {
@@ -29,7 +29,7 @@ public class EdDSAAlgorithm: CoseAlgorithm {
     }
 
     public func verify(key: OKPKey, data: Data, signature: Data) throws -> Bool {
-        let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier)
+        let curveId = CoseCurveIdentifier(rawValue: key.curve.identifier!)
         switch curveId {
             case .ed25519:
                 guard let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: key.x!) else {

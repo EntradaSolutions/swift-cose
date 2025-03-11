@@ -4,6 +4,7 @@ import Foundation
 enum CoseError: Error {
     case attributeError(String)
     case genericError(String)
+    case invalidAttribute(String)
     case invalidCurve(String)
     case invalidKeyOps(String)
     case invalidKeyType(String)

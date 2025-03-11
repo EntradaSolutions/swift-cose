@@ -34,7 +34,8 @@ public class DirectKeyAgreement: CoseRecipient {
         guard let alg = try directKeyAgreementMsg.getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_HKDF_256, .ecdhES_HKDF_512]
         
@@ -46,7 +47,7 @@ public class DirectKeyAgreement: CoseRecipient {
             ephermalKey = nil
         }
         
-        if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
+        if needsEphemeralKey.contains(algId) && ephermalKey == nil {
             throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }
         
@@ -63,7 +64,8 @@ public class DirectKeyAgreement: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? CoseAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
 
         // Static receiver key
         guard let peerKey = localAttrs[StaticKey()] as? EC2Key else {
@@ -74,7 +76,7 @@ public class DirectKeyAgreement: CoseRecipient {
 
         // if ephemeral and not set, generate ephemeral key pair
         if key == nil {
-            if needsEphemeralKey.contains(algId!) {
+            if needsEphemeralKey.contains(algId) {
                 try setupEphemeralKey(peerKey: peerKey)
             } else {
                 // alg uses a static sender
@@ -89,7 +91,7 @@ public class DirectKeyAgreement: CoseRecipient {
         // only the ephemeral sender key MUST be included in the header,
         // for the static sender it is recommended by not obligated
         let ephermalKey = try getAttr(EphemeralKey())
-        if needsEphemeralKey.contains(algId!) && ephermalKey == nil {
+        if needsEphemeralKey.contains(algId) && ephermalKey == nil {
             throw CoseError.malformedMessage("Recipient class \(type(of: self))  must carry an ephemeral COSE key object.")
         }
         
@@ -125,7 +127,8 @@ public class DirectKeyAgreement: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? EcdhHkdfAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should be included in either the protected header or unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         let supportedAlgorithms: [CoseAlgorithmIdentifier] = [
             .ecdhES_HKDF_256,
@@ -135,7 +138,7 @@ public class DirectKeyAgreement: CoseRecipient {
         ]
 
         let peerKey: EC2Key
-        if supportedAlgorithms.contains(algId!) {
+        if supportedAlgorithms.contains(algId) {
             if ops == "encrypt" {
                 peerKey = localAttrs[StaticKey()] as! EC2Key
             } else {
@@ -143,14 +146,14 @@ public class DirectKeyAgreement: CoseRecipient {
                     .ecdhSS_HKDF_512,
                     .ecdhSS_HKDF_512
                 ]
-                if algs.contains(algId!) {
+                if algs.contains(algId) {
                     peerKey = try getAttr(StaticKey()) as! EC2Key
                 } else {
                     peerKey = try getAttr(EphemeralKey()) as! EC2Key
                 }
             }
         } else {
-            throw CoseError.invalidAlgorithm("Algorithm \(alg.fullname) unsupported for \(type(of: self)).")
+            throw CoseError.invalidAlgorithm("Algorithm \(alg) unsupported for \(type(of: self)).")
         }
 
         try peerKey.verify(

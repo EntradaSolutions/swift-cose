@@ -39,6 +39,7 @@ func toBstr(_ dec: BigUInteger) -> Data {
 
 /// Base class for COSE attributes
 open class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomDebugStringConvertible {
+
     
 //    enum CodingKeys: String, CodingKey {
 //        case identifier
@@ -49,8 +50,8 @@ open class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomD
         return description
     }
 
-    public var identifier: Int
-    public var fullname: String
+    public var identifier: Int?
+    public var fullname: String?
     public var valueParser: ((Any) throws -> Any)? = nil
     
     /// Initialize a new COSE attribute
@@ -59,18 +60,26 @@ open class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomD
     ///   - fullname: The full name of the attribute
     ///   - valueParser: The parser function to convert the attribute value
     public init(
-        identifier: Int,
-        fullname: String,
+        identifier: Int?,
+        fullname: String?,
         valueParser: ((Any) throws -> Any)? = nil
     ) {
         self.identifier = identifier
-        self.fullname = fullname.uppercased()
+        self.fullname = fullname
         self.valueParser = valueParser ?? defaultParser
     }
 
     /// The description of the attribute
     public var description: String {
-        return "<\(fullname): \(identifier)>"
+        if let fullname = fullname, let identifier = identifier {
+            return "<\(fullname): \(identifier)>"
+        } else if let fullname = fullname {
+            return "<\(type(of: self)): \(fullname)>"
+        } else if let identifier = identifier {
+            return "<\(type(of: self)): \(identifier)>"
+        } else {
+            return "<\(type(of: self))>"
+        }
     }
     
     public func hash(into hasher: inout Hasher) {
@@ -81,22 +90,17 @@ open class CoseAttribute: Comparable, Hashable, CustomStringConvertible, CustomD
     public static func == (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
         return lhs.identifier == rhs.identifier
     }
-
+    
     public static func < (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier < rhs.identifier
+        if let lhsId = lhs.identifier, let rhsId = rhs.identifier {
+            return lhsId < rhsId
+        } else if let lhsName = lhs.fullname, let rhsName = rhs.fullname {
+            return lhsName < rhsName
+        } else {
+            return lhs.hashValue < rhs.hashValue
+        }
     }
 
-    public static func > (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier > rhs.identifier
-    }
-
-    public static func <= (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier <= rhs.identifier
-    }
-
-    public static func >= (lhs: CoseAttribute, rhs: CoseAttribute) -> Bool {
-        return lhs.identifier >= rhs.identifier
-    }
     
     public func defaultParser(value: Any) throws -> Any {
         return value

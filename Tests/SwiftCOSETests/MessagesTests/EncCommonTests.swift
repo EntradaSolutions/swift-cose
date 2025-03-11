@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct EncCommonTests {
@@ -8,12 +9,12 @@ struct EncCommonTests {
     // MARK: - Initialization Tests
     
     @Test func testEncCommonInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         

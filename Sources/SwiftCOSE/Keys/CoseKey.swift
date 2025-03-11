@@ -121,10 +121,7 @@ public class CoseKey: CustomStringConvertible {
                return getInstance(for: type)
 
            case let attr as CoseAttribute:
-               // If the identifier is a String, attempt to match it to a KeyTypeIdentifier
-               guard let type = KeyTypeIdentifier(rawValue: attr.identifier) else {
-                   throw CoseError.invalidKeyType("Unknown type fullname")
-               }
+               let type = try KeyTypeIdentifier.fromKTY(attr as! KTY)
                return getInstance(for: type)
 
            default:
@@ -183,7 +180,13 @@ public class CoseKey: CustomStringConvertible {
             } else if let intKey = entry.key as? Int {
                 key = CBOR(intKey)
             } else if let coseAttr = entry.key as? CoseAttribute {
-                key = CBOR(coseAttr.identifier)
+                if let identifier = coseAttr.identifier {
+                    key = CBOR(identifier)
+                } else if let fullName = coseAttr.fullname {
+                    key = CBOR(fullName)
+                } else {
+                    throw CoseError.invalidKeyType("Unsupported key type: \(type(of: entry.key))")
+                }
             } else {
                 throw CoseError.invalidKeyType("Unsupported key type: \(type(of: entry.key))")
             }
@@ -193,7 +196,13 @@ public class CoseKey: CustomStringConvertible {
             } else if let intValue = entry.value as? Int {
                 value = CBOR(intValue)
             } else if let coseAttr = entry.value as? CoseAttribute {
-                value = CBOR(coseAttr.identifier)
+                if let identifier = coseAttr.identifier {
+                    value = CBOR(identifier)
+                } else if let fullName = coseAttr.fullname {
+                    value = CBOR(fullName)
+                } else {
+                    throw CoseError.invalidKeyType("Unsupported key type: \(type(of: entry.key))")
+                }
             } else if let data = entry.value as? Data {
                 value = CBOR(data)
             } else {
@@ -389,7 +398,7 @@ public class CoseKey: CustomStringConvertible {
         // Sorting keys and transforming the dictionary
         let sortedKeys = store.keys.sorted { (lhs, rhs) -> Bool in
             if let lhsIdentifiable = lhs as? CoseAttribute, let rhsIdentifiable = rhs as? CoseAttribute {
-                return lhsIdentifiable.identifier < rhsIdentifiable.identifier
+                return lhsIdentifiable < rhsIdentifiable
             }
             return false
         }

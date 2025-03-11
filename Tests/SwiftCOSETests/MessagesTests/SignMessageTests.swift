@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
+
 @testable import SwiftCOSE
 
 struct CoseSignMessageTests {
@@ -8,12 +10,12 @@ struct CoseSignMessageTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -49,7 +51,7 @@ struct CoseSignMessageTests {
         let payload = Data("Test Payload".utf8)
         
         let phdr: [CoseHeaderAttribute: Any] = [
-            Algorithm(): Es256().identifier
+            Algorithm(): Es256().identifier!
         ]
         let protectedHdrMap = CBOR.map((phdr as Dictionary<AnyHashable, Any>).mapKeysToCbor)
         let encoded = try CBORSerialization.data(from: protectedHdrMap)
@@ -57,7 +59,7 @@ struct CoseSignMessageTests {
         let signature: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Es256().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Es256().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -68,7 +70,7 @@ struct CoseSignMessageTests {
         
         let coseArray: CBOR.Array = [
             CBOR.byteString(encoded),
-            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier)]),
+            CBOR.map([CBOR.simple(1): CBOR(Es256().identifier!)]),
             CBOR.byteString(payload),
             CBOR.array(signatures)
         ]
@@ -86,12 +88,12 @@ struct CoseSignMessageTests {
     @Test func testEncode() async throws {
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.p256)
         let key = try EC2Key.generateKey(curve: curve)
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): Es256(),
             IV(): Data([0x05, 0x06, 0x07, 0x08])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         

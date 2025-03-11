@@ -7,6 +7,17 @@ public enum KeyTypeIdentifier: Int, CaseIterable, Sendable {
     case rsa = 3
     case symmetric = 4
     
+    public static func fromKTY(_ kty: KTY) throws -> KeyTypeIdentifier {
+        if let fullname = kty.fullname {
+            return KeyTypeIdentifier.fromFullName(fullname)!
+        } else if let identifier = kty.identifier {
+            return KeyTypeIdentifier(rawValue: identifier)!
+        } else {
+            throw CoseError
+                .invalidKeyType("Key Type not found in KTY instance")
+        }
+    }
+    
     /// Returns the appropriate `KeyTypeIdentifier` for the given fullname.
     /// - Parameter fullname: The string fullname of the key type.
     /// - Returns: The corresponding `KeyTypeIdentifier` if found, otherwise nil.

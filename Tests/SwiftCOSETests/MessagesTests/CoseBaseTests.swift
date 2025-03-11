@@ -9,12 +9,12 @@ struct CoseBaseTests {
     // MARK: - Initialization Tests
     
     @Test func testCoseBaseInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -45,7 +45,7 @@ struct CoseBaseTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]

@@ -19,7 +19,7 @@ public struct PartyInfo {
 
 public struct SuppPubInfo {
     private var _keyDataLength: Int
-    var protected: Dictionary<AnyHashable, Any> = [:]
+    var protected: OrderedDictionary<CoseHeaderAttribute, Any> = [:]
     var other: Data = Data()
     
     /// The length of the derived key in bytes.
@@ -36,7 +36,7 @@ public struct SuppPubInfo {
         }
     }
 
-    init(keyDataLength: Int, protected: Dictionary<AnyHashable, Any> = [:], other: Data = Data()) throws {
+    init(keyDataLength: Int, protected: OrderedDictionary<CoseHeaderAttribute, Any> = [:], other: Data = Data()) throws {
         guard [16, 24, 32].contains(keyDataLength) else {
             throw CoseError.valueError("Not a valid key length: \(keyDataLength)")
         }
@@ -72,8 +72,17 @@ public struct CoseKDFContext {
     var suppPrivInfo: Data = Data()
 
     func encode() throws -> Data {
+        let algCBOR: CBOR
+        if let algId = algorithm.identifier {
+            algCBOR = CBOR(algId)
+        } else if let fullname = algorithm.fullname {
+            algCBOR = CBOR(fullname)
+        } else {
+            throw CoseError.valueError("The algorithm must have an identifier or fullname.")
+        }
+        
         var context: [CBOR] = [
-            CBOR(algorithm.identifier),
+            algCBOR,
             CBOR.array(partyUInfo.encode()),
             CBOR.array(partyVInfo.encode()),
             CBOR.array(try suppPubInfo.encode())

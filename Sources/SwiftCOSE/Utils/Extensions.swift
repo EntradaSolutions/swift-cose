@@ -135,6 +135,15 @@ extension String {
     }
 }
 
+// MARK: - OrderedDictionary Extensions
+extension OrderedDictionary {
+    var mapKeysToCbor: OrderedDictionary<CBOR, CBOR> {
+        return self.reduce(into: [:]) { result, element in
+            result[CBOR.fromAny(element.key)] = CBOR.fromAny(element.value)
+        }
+    }
+}
+
 // MARK: - Dictionary Extensions
 extension Dictionary where Key == AnyHashable, Value == Any {
     var mapKeysToCbor: OrderedDictionary<CBOR, CBOR> {
@@ -157,15 +166,17 @@ extension CBOR {
         if let stringValue = value as? String {
             return .utf8String(stringValue)
         } else if let intValue = value as? Int {
-            return intValue >= 0 ?
-                .unsignedInt(UInt64(intValue)) :
-                .negativeInt(UInt64(abs(intValue)))
+            return CBOR(intValue)
         } else if let dataValue = value as? Data {
             return .byteString(dataValue)
         } else if let attrValue = value as? CoseAttribute {
-            return attrValue.identifier >= 0 ?
-                .unsignedInt(UInt64(attrValue.identifier)) : 
-                .negativeInt(UInt64(abs(attrValue.identifier)))
+            if let identifier = attrValue.identifier {
+                return CBOR(identifier)
+            } else if let fullname = attrValue.fullname {
+                return .utf8String(fullname)
+            } else {
+                return .null
+            }
         } else if let dictValue = value as? [AnyHashable: CoseHeaderAttribute] {
             return .map(dictValue.mapKeysToCbor)
         } else {

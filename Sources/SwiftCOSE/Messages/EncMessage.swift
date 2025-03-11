@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 /// EncMessage class for handling COSE_Encrypt messages.
 public class EncMessage: EncCommon {
@@ -30,8 +31,8 @@ public class EncMessage: EncCommon {
     ///   - key: The Symmetric COSE key for encryption/decryption of the message
     ///   - recipients: An optional list of `CoseRecipient` objects.
     /// - Returns: A COSE Encrypt0 message object.
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                  payload: Data = Data(),
                  externalAAD: Data = Data(),
                  key: CoseSymmetricKey? = nil,

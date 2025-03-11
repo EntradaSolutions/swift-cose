@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct DirectKeyAgreementTests {
@@ -8,8 +9,8 @@ struct DirectKeyAgreementTests {
     // MARK: - Test Initialization
     
     @Test func testDirectKeyAgreementInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Direct()]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Direct()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         let payload = Data()
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
         
@@ -33,7 +34,7 @@ struct DirectKeyAgreementTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -174,7 +175,7 @@ struct DirectKeyAgreementTests {
     
     @Test func testComputeCEKWithKey() async throws {
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
-        let uhdr: [CoseHeaderAttribute: Any] = [Algorithm(): A128KW()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): A128KW()]
         let directEncryption = DirectKeyAgreement(uhdr: uhdr, key: key)
         let algorithm = A128KW()
         
@@ -188,7 +189,7 @@ struct DirectKeyAgreementTests {
     @Test func testComputeCEKWithKeyEcdhEsHKDF256Alg() async throws {
         let curve = try CoseCurve.fromId(for: CoseCurveIdentifier.p256)
         let key = try EC2Key.generateKey(curve: curve)
-        let uhdr: [CoseHeaderAttribute: Any] = [Algorithm(): EcdhEsHKDF256()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): EcdhEsHKDF256()]
         let directEncryption = DirectKeyAgreement(uhdr: uhdr, key: key)
         let algorithm = A128KW()
         

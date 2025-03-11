@@ -75,18 +75,23 @@ open class CoseHeaderAttribute: CoseAttribute {
         fullname: String,
         valueParser: ((Any) throws -> Any)? = nil
     ) {
-        super.init(identifier: identifier.rawValue, fullname: fullname, valueParser: valueParser)
+        super.init(
+            identifier: identifier.rawValue,
+            fullname: fullname,
+            valueParser: valueParser
+        )
     }
     
     public init(
-        customIdentifier: Int,
-        fullname: String,
+        customIdentifier: Int?,
+        fullname: String?,
         valueParser: ((Any) throws -> Any)? = nil
     ) {
-        guard customIdentifier < 0 else {
-            fatalError("Invalid custom identifier")
-        }
-        super.init(identifier: customIdentifier, fullname: fullname, valueParser: valueParser)
+        super.init(
+            identifier: customIdentifier,
+            fullname: fullname,
+            valueParser: valueParser
+        )
     }
     
     

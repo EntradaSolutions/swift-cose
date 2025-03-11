@@ -61,6 +61,16 @@ public enum CoseAlgorithmIdentifier: Int, CaseIterable, Sendable {
     case shake128 = -18
     case shake256 = -45
     
+    public static func fromCoseAlgorithm(_ alg: CoseAlgorithm) throws -> CoseAlgorithmIdentifier {
+        if let fullname = alg.fullname {
+            return CoseAlgorithmIdentifier.fromFullName(fullname)!
+        } else if let identifier = alg.identifier {
+            return CoseAlgorithmIdentifier(rawValue: identifier)!
+        } else {
+            throw CoseError.invalidAlgorithm("Algorithm not found in protected headers")
+        }
+    }
+    
     /// Returns the appropriate `CoseAlgorithmIdentifier` for the given fullname.
     /// - Parameter fullname: The string fullname of the algorithm.
     /// - Returns: The corresponding `CoseAlgorithmIdentifier` if found, otherwise nil.
@@ -194,10 +204,19 @@ public class CoseAlgorithm: CoseAttribute {
                 return getInstance(for: alg)
                 
             case let type as CoseAttribute:
-                guard let keyType = CoseAlgorithmIdentifier(rawValue: type.identifier) else {
-                    throw CoseError.invalidKeyType("Unknown algorithm identifier")
+                if let id = type.identifier {
+                    guard let alg = CoseAlgorithmIdentifier(rawValue: id) else {
+                        throw CoseError.invalidAlgorithm("Unknown algorithm identifier")
+                    }
+                    return getInstance(for: alg)
+                } else if let fullname = type.fullname {
+                    guard let alg = CoseAlgorithmIdentifier.fromFullName(fullname) else {
+                        throw CoseError.invalidAlgorithm("Unknown algorithm fullname")
+                    }
+                    return getInstance(for: alg)
+                } else {
+                    throw CoseError.invalidAlgorithm("Algorithm identifier or fullname not found")
                 }
-                return getInstance(for: keyType)
             default:
                 throw CoseError.invalidAlgorithm("Unsupported identifier type. Must be Int, String, or CoseAlgorithmIdentifier. Type: \(type(of: attribute))")
         }

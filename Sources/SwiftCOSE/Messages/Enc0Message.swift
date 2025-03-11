@@ -15,8 +15,8 @@ public class Enc0Message: EncCommon {
     ///   - externalAad: External data (is authenticated but not transported in the message).
     ///   - key: The Symmetric COSE key for encryption/decryption of the message
     /// - Returns: A COSE Encrypt0 message object.
-    public override init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                         uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public override init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                         uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                          payload: Data = Data(),
                          externalAAD: Data = Data(),
                          key: CoseSymmetricKey? = nil) {

@@ -1,5 +1,6 @@
 import Foundation
 import PotentCBOR
+import OrderedCollections
 
 /// COSE MACed Message with Recipients
 public class MacMessage: MacCommon {
@@ -9,8 +10,8 @@ public class MacMessage: MacCommon {
     public var recipients: [CoseRecipient] = []
     
     // MARK: - Initialization
-    public init(phdr: [CoseHeaderAttribute: Any]? = nil,
-                uhdr: [CoseHeaderAttribute: Any]? = nil,
+    public init(phdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
+                uhdr: OrderedDictionary<CoseHeaderAttribute, Any>? = nil,
                 payload: Data = Data(),
                 externalAAD: Data = Data(),
                 key: CoseSymmetricKey? = nil,

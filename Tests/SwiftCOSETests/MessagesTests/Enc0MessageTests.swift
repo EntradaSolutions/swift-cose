@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct Enc0MessageTests {
@@ -8,12 +9,12 @@ struct Enc0MessageTests {
     // MARK: - Initialization Tests
     
     @Test func testInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x01, 0x02, 0x03, 0x04])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/cbor"
         ]
         
@@ -52,7 +53,7 @@ struct Enc0MessageTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // Zero-length protected header
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier) // Algorithm
+                CBOR.simple(1): CBOR(Direct().identifier!) // Algorithm
             ]),
             CBOR.byteString(Data())  // Zero-length ciphertext
         ]
@@ -66,12 +67,12 @@ struct Enc0MessageTests {
     // MARK: - Encode Tests
     
     @Test func testEncode() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             Algorithm(): A128GCM(),
             IV(): Data([0x11, 0x12, 0x13, 0x14])
         ]
         
-        let uhdr: [CoseHeaderAttribute: Any] = [
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [
             ContentType(): "application/json"
         ]
         
@@ -88,17 +89,14 @@ struct Enc0MessageTests {
         let encoded = try enc0Message.encode()
         let decoded = try CBORSerialization.cbor(from: encoded)
         
-        print(decoded)
-        
-        print(decoded.untagged)
-        
         #expect(decoded != nil, "Encoded CBOR should not be nil.")
         
         // Extract tag
         if case let .tagged(tag, value) = decoded {
-            print("Tag value: \(tag.rawValue)")  // Outputs: 32
             #expect(tag.rawValue == enc0Message.cborTag, "CBOR tag should match Encrypt0 tag.")
             #expect(value.arrayValue!.count == 3, "Encoded CBOR should contain three elements.")
+        } else {
+            Issue.record("Encoded CBOR should be tagged.")
         }
     }
 }

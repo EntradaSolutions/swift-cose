@@ -608,6 +608,17 @@ public enum SymmetricKeyParamIdentifier: Int, CaseIterable, Sendable {
     case baseIV = 5
     case k = -1
     
+    public static func fromSymmetricKeyParam(_ keyParam: KeyParam) throws -> SymmetricKeyParamIdentifier {
+        if let fullname = keyParam.fullname {
+            return SymmetricKeyParamIdentifier.fromFullName(fullname)!
+        } else if let identifier = keyParam.identifier {
+            return SymmetricKeyParamIdentifier(rawValue: identifier)!
+        } else {
+            throw CoseError
+                .invalidKeyType("Key Parameters not properly initialized")
+        }
+    }
+    
     /// Returns the appropriate `SymmetricKeyParamIdentifier` for the given fullname.
     /// - Parameter fullname: The string fullname of the RSA key parameter.
     /// - Returns: The corresponding `SymmetricKeyParamIdentifier` if found, otherwise nil.
@@ -652,9 +663,7 @@ public class SymmetricKeyParam: KeyParam {
                 return getInstance(for: type)
 
             case let type as CoseAttribute:
-                guard let keyType = SymmetricKeyParamIdentifier(rawValue: type.identifier) else {
-                    throw CoseError.invalidKeyType("Unknown SymmetricKeyParam identifier")
-                }
+                let keyType = try SymmetricKeyParamIdentifier.fromSymmetricKeyParam(type as! KeyParam)
                 return getInstance(for: keyType)
             default:
                 throw CoseError.invalidKeyType("Unsupported identifier type: \(type(of: identifier))")

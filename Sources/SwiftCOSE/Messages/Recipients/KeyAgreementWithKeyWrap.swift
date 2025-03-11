@@ -105,7 +105,8 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? EcdhHkdfAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should at least be included in the unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         // Static receiver key
         guard let peerKey = localAttrs[StaticKey()] as? EC2Key else {
@@ -116,7 +117,7 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
 
         // Ephemeral key generation
         if key == nil {
-            if needsEphemeralKey.contains(algId!) {
+            if needsEphemeralKey.contains(algId) {
                 try setupEphemeralKey(peerKey: peerKey)
             } else {
                 throw CoseError.invalidKey("Static sender key cannot be nil.")
@@ -146,24 +147,25 @@ public class KeyAgreementWithKeyWrap: CoseRecipient {
         guard let alg = try getAttr(Algorithm()) as? EcdhHkdfAlgorithm else {
             throw CoseError.invalidAlgorithm("The algorithm parameter should at least be included in the unprotected header.")
         }
-        let algId = CoseAlgorithmIdentifier.fromFullName(alg.fullname)
+        
+        let algId = try CoseAlgorithmIdentifier.fromCoseAlgorithm(alg)
         
         let needsEphemeralKey: [CoseAlgorithmIdentifier] = [.ecdhES_A128KW, .ecdhES_A192KW, .ecdhES_A256KW]
         let needsStaticKey: [CoseAlgorithmIdentifier] = [.ecdhSS_A128KW, .ecdhSS_A192KW, .ecdhSS_A256KW]
         
         let peerKey: CoseKey
-        if needsEphemeralKey.contains(algId!) {
+        if needsEphemeralKey.contains(algId) {
             guard let ephermalKey = try getAttr(EphemeralKey()) as? CoseKey else {
                 throw CoseError.invalidMessage("Ephemeral key is required.")
             }
             peerKey = ephermalKey
-        } else if needsStaticKey.contains(algId!) {
+        } else if needsStaticKey.contains(algId) {
             guard let staticKey = try getAttr(StaticKey()) as? CoseKey else {
                 throw CoseError.invalidMessage("Static key is required.")
             }
             peerKey = staticKey
         } else {
-            throw CoseError.invalidAlgorithm("Algorithm \(alg.fullname) not supported for \(type(of: self)).")
+            throw CoseError.invalidAlgorithm("Algorithm \(alg) not supported for \(type(of: self)).")
         }
         
         let keyOps = [DecryptOp(), UnwrapOp()]

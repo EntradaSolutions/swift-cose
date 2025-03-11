@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import PotentCodables
 import PotentCBOR
+import OrderedCollections
 @testable import SwiftCOSE
 
 struct CoseRecipientTests {
@@ -9,8 +10,8 @@ struct CoseRecipientTests {
     // MARK: - Test Initialization
     
     @Test func testRecipientInitialization() async throws {
-        let phdr: [CoseHeaderAttribute: Any] = [Algorithm(): Es256()]
-        let uhdr: [CoseHeaderAttribute: Any] = [ContentType(): "application/cbor"]
+        let phdr: OrderedDictionary<CoseHeaderAttribute, Any> = [Algorithm(): Es256()]
+        let uhdr: OrderedDictionary<CoseHeaderAttribute, Any> = [ContentType(): "application/cbor"]
         let payload = Data("test payload".utf8)
         let key = try CoseSymmetricKey.generateKey(keyLength: 32)
         
@@ -70,7 +71,7 @@ struct CoseRecipientTests {
         let coseArray: CBOR.Array = [
             CBOR.byteString(Data()),  // zero-length Protected header for DIRECT_ENCRYPTION
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier)
+                CBOR.simple(1): CBOR(Direct().identifier!)
             ]),
             CBOR.byteString(Data())  // zero-length ciphertext for DIRECT_ENCRYPTION
         ]
@@ -86,7 +87,7 @@ struct CoseRecipientTests {
     @Test func testCreateRecipientError() async throws {
         let coseArray: CBOR.Array = [
             CBOR.map([
-                CBOR.simple(1): CBOR(Direct().identifier)
+                CBOR.simple(1): CBOR(Direct().identifier!)
             ]),
         ]
         
