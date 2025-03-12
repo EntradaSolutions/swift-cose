@@ -167,8 +167,20 @@ extension CBOR {
             return .utf8String(stringValue)
         } else if let intValue = value as? Int {
             return CBOR(intValue)
+        } else if let simpleValue = value as? UInt8 {
+            return .simple(simpleValue)
+        } else if let simpleValue = value as? Int8 {
+            return .simple(UInt8(simpleValue))
         } else if let dataValue = value as? Data {
             return .byteString(dataValue)
+        } else if let boolValue = value as? Bool {
+            return .boolean(boolValue)
+        } else if let floatValue = value as? Float {
+            return .float(floatValue)
+        } else if let doubleValue = value as? Double {
+            return .double(doubleValue)
+        } else if let arrayValue = value as? [Any] {
+            return .array(arrayValue.map { CBOR.fromAny($0) })
         } else if let attrValue = value as? CoseAttribute {
             if let identifier = attrValue.identifier {
                 return CBOR(identifier)
