@@ -177,7 +177,11 @@ extension CBOR {
             } else {
                 return .null
             }
+        } else if let dictValue = value as? OrderedDictionary<CoseHeaderAttribute, Any> {
+            return .map(dictValue.mapKeysToCbor)
         } else if let dictValue = value as? [AnyHashable: CoseHeaderAttribute] {
+            return .map(dictValue.mapKeysToCbor)
+        } else if let dictValue = value as? [AnyHashable: Any] {
             return .map(dictValue.mapKeysToCbor)
         } else {
             return .null
