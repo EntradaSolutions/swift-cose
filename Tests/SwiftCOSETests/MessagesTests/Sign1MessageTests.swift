@@ -99,8 +99,15 @@ struct Sign1MessageTests {
         )
         
         let encoded = try sign1Message.encode()
+        
+        let decodedMessage = try CoseMessage.decode(
+            Sign1Message.self,
+            from: encoded
+        ) as Sign1Message
+        
         let decoded = try CBORSerialization.cbor(from: encoded)
         
+        #expect(decodedMessage.phdr != nil, "Decoded phdr should not be nil.")
         #expect(decoded != nil, "Encoded CBOR should not be nil.")
         
         if case let .tagged(tag, value) = decoded {

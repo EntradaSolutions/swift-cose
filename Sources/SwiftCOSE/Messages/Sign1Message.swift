@@ -71,23 +71,23 @@ public class Sign1Message: SignCommon {
         if sign {
             let computedSignature = try self.computeSignature(detachedPayload: detachedPayload)
             cborMessage = [
-                phdrEncoded.toCBOR,
+                CBOR.byteString(phdrEncoded),
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? Data().toCBOR,
+                CBOR.byteString(payload ?? Data()),
                 CBOR.byteString(computedSignature),
             ]
         } else if !signature.isEmpty {
             cborMessage = [
-                phdrEncoded.toCBOR,
+                CBOR.byteString(phdrEncoded),
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? Data().toCBOR,
+                CBOR.byteString(payload ?? Data()),
                 CBOR.byteString(signature),
             ]
         } else {
             cborMessage = [
-                phdrEncoded.toCBOR,
+                CBOR.byteString(phdrEncoded),
                 CBOR.fromAny(uhdrEncoded),
-                payload?.toCBOR ?? Data().toCBOR,
+                CBOR.byteString(payload ?? Data()),
             ]
         }
 
