@@ -1,3 +1,9 @@
+## 0.1.10 (2025-03-12)
+
+### Fix
+
+- handle other dictionaries
+
 ## 0.1.9 (2025-03-12)
 
 ### Fix
