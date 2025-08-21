@@ -26,7 +26,7 @@ let package = Package(
         .package(url: "https://github.com/krzyzanowskim/OpenSSL-Package.git", .upToNextMinor(from: "3.3.2000")),
         .package(url: "https://github.com/Sajjon/K1.git", from: "0.3.9"),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.8.3")),
-        .package(url: "https://github.com/Kingpin-Apps/swift-curve448.git", from: "0.1.0")
+        .package(url: "https://github.com/Kingpin-Apps/swift-curve448.git", from: "0.1.1")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
