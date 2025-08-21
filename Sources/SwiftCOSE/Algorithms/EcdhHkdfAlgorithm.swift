@@ -67,13 +67,13 @@ public class EcdhHkdfAlgorithm: CoseAlgorithm {
         
         switch self.hashFunction {
             case .sha256:
-                hkdf = HKDF<SHA256>.deriveKey<Data>(
+                hkdf = HKDF<SHA256>.deriveKey(
                     inputKeyMaterial: SymmetricKey(data: sharedSecret),
                     info: try context.encode(),
                     outputByteCount: context.suppPubInfo.keyDataLength
                 )
             case .sha512:
-                hkdf = HKDF<SHA512>.deriveKey<SymmetricKey>(
+                hkdf = HKDF<SHA512>.deriveKey(
                     inputKeyMaterial: SymmetricKey(data: sharedSecret),
                     info: try context.encode(),
                     outputByteCount: context.suppPubInfo.keyDataLength
