@@ -1,3 +1,10 @@
+## 0.1.12 (2025-08-20)
+
+### Fix
+
+- update swift-curve448
+- fix specialize static method error
+
 ## 0.1.11 (2025-03-12)
 
 ### Fix
