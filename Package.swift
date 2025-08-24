@@ -18,7 +18,7 @@ let package = Package(
             targets: ["SwiftCOSE"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/outfoxx/PotentCodables.git", .upToNextMajor(from: "3.5.0")),
+        .package(url: "https://github.com/KINGH242/PotentCodables.git", .upToNextMinor(from: "3.6.0")),
         .package(url: "https://github.com/leif-ibsen/Digest.git", from: "1.11.0"),
         .package(url: "https://github.com/tesseract-one/UncommonCrypto.swift.git",
                  .upToNextMinor(from: "0.2.1")),
