@@ -1,5 +1,5 @@
 {
-  "originHash" : "bb9ae4d40b638d0ff8c9991a0e3546f37d85eb63e1c241c4d8319de276ba032f",
+  "originHash" : "6ef98c325bca41fed68e9bb43eb9d819d6020721eeae293ad5c7b832ca383bac",
   "pins" : [
     {
       "identity" : "bigint",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzyzanowskim/CryptoSwift.git",
       "state" : {
-        "revision" : "678d442c6f7828def400a70ae15968aef67ef52d",
-        "version" : "1.8.3"
+        "revision" : "e45a26384239e028ec87fbcc788f513b67e10d8f",
+        "version" : "1.9.0"
       }
     },
     {
@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Kingpin-Apps/swift-curve448.git",
       "state" : {
-        "revision" : "c1ec8b567dc8dcbd844179677a9cc262ac3c3d2b",
-        "version" : "0.1.1"
+        "revision" : "a0cba8e4f5c11b5d9c336e55c24b417b52bc8e9e",
+        "version" : "0.1.2"
       }
     },
     {
