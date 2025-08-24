@@ -1,3 +1,9 @@
+## 0.1.14 (2025-08-24)
+
+### Fix
+
+- update CryptoSwift and swift-curve448
+
 ## 0.1.13 (2025-08-24)
 
 ### Fix
