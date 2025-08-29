@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "SwiftCOSE",
     platforms: [
-      .iOS(.v14),
+      .iOS(.v15),
       .macOS(.v13),
       .watchOS(.v7),
       .tvOS(.v14),
