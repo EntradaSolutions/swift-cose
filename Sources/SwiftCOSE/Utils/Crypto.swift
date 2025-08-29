@@ -485,6 +485,7 @@ public func deriveSigningPrivateKey<T>(from key: Data, curve: CurveType) throws 
     }
 }
 
+@available(iOS 16.0, *)
 public func deriveKeyAgreementPublicKeyCompact<T>(from key: Data, curve: CurveType) throws -> T {
     do {
         switch curve {
